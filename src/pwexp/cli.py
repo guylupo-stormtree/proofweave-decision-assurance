@@ -119,6 +119,36 @@ def cmd_import_iceccs(a) -> int:
     return 0
 
 
+def cmd_run_stage(a) -> int:
+    from .stages import stage2_timing, stage3_scale
+    try:
+        c = cycles.load(a.cycle)
+        ok, why = c.can_start(a.stage)
+        if not ok:
+            _p(f"{FAIL} cannot start Stage {a.stage}: {why}")
+            return 1
+        runner = {2: stage2_timing.run, 3: stage3_scale.run}.get(a.stage)
+        if runner is None:
+            _p("Stage 1 needs per-run model keys: use the terminal UI (P5). Stage 4 arrives in P3.")
+            return 2
+        _p(f"Stage {a.stage}  {cycles.STAGES[a.stage]} …")
+        passed = runner(c, repetitions=a.repetitions, operator=a.operator, progress=lambda m: _p(f"  {m}"))
+    except (cycles.CycleError, ValueError) as e:
+        _p(f"{FAIL} {e}")
+        return 1
+    st = c.data["stages"][str(a.stage)]
+    for name, v in st["checks"].items():
+        _p(f"  {OK if v else FAIL} {name}")
+    o = st["outcome"]
+    if a.stage == 2:
+        _p(f"{OK if passed else FAIL} Stage 2 · median {o['median_ms']} ms · max {o['max_ms']} ms · "
+           f"{o['within_threshold']}/{o['observations']} within {o['threshold_s']} s · corpus E {o['corpus_sha256'][:12]}")
+    else:
+        _p(f"{OK if passed else FAIL} Stage 3 · largest {o['largest_volume']} records · max ready "
+           f"{o['max_ready_ms_at_largest']} ms · threshold crossing: {o['threshold_crossing']}")
+    return 0 if passed else 1
+
+
 def cmd_pending(a) -> int:
     _p(f"'{a.cmd}' becomes available in a later build phase (see docs/BUILD.md).")
     return 2
@@ -145,6 +175,12 @@ def main(argv: list[str] | None = None) -> int:
     im.add_argument("dataset", help="path to datasets/live-v1/python_npd")
     im.add_argument("--runs", nargs="+", required=True, help="e.g. gpt-4.1/run25 gpt-4o-mini/run01")
     im.set_defaults(fn=cmd_import_iceccs)
+    rs = sub.add_parser("run-stage", help="run Stage 2 or 3 on a cycle")
+    rs.add_argument("stage", type=int, choices=[2, 3])
+    rs.add_argument("--cycle", required=True)
+    rs.add_argument("--repetitions", type=int)
+    rs.add_argument("--operator", default="cli")
+    rs.set_defaults(fn=cmd_run_stage)
     for name in ("verify", "replay", "ui"):
         s = sub.add_parser(name)
         s.add_argument("--published", action="store_true")

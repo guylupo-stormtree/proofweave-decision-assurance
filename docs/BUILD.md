@@ -6,7 +6,7 @@ Design: [DESIGN.md](DESIGN.md). This file tracks which parts of the design are b
 |---|---|---|
 | P0 Foundation | package, hashing, hash-chained logs, protocol check/lock, cycles + stage gating, in-memory model/key entries, plain CLI | **done**, tests passing |
 | P1 Stage 1 | RepoAudit submodule + setup, Semgrep setup, model gateway (OpenAI, Claude, dev-local), Stage 1 runner, GREEN mapping (DR-11), sealing, checks | **done**: 26 tests; end-to-end pilot verified (local model via gateway; all checks pass) |
-| P2 ProofWeave + Stages 2–3 | adapter with source refs, Bind, JSONL ledger, Graph Weaver, Query API, t0–t4 timing, scale workloads, seal 2 | not started |
+| P2 ProofWeave + Stages 2–3 | adapter with source refs, Bind, JSONL ledger, Graph Weaver, Query API, t0–t4 timing, scale workloads, seal 2 | **done**: 48 tests; Stages 2–3 pass on real first-study runs; corpus E reproducible across cycles |
 | P3 Stage 4 | TAIP obligations, posture, gateway, verdict-only rule, views P0–P9/P2w, divergent pair, independent oracle, replay | not started |
 | P4 Reporting + publish | RESULTS.md, tables, `.dot`, generated LaTeX, maintainer publish | **started**: `pwexp paper-tex` (paper LaTeX generator, 5 tests) |
 | P5 Terminal UI | Textual TUI: entry menu, cycles, stage buttons, model/key menu, Question the graph | not started |
