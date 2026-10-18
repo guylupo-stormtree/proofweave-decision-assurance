@@ -157,7 +157,12 @@ def run(cycle: Cycle, required_path: Path | None = None, tau: float | None = Non
         "required set non-empty and recorded": bool(required["items"]),
         "no control executed (corpus E only)": True,
     }
-    outcome = {"required_set_sha256": sha256_file(required_path), "required_items": len(required["items"]),
+    try:
+        req_ref = Path(required_path).resolve().relative_to(repo_root().resolve()).as_posix()
+    except ValueError:
+        req_ref = str(Path(required_path).resolve())
+    outcome = {"required_set_sha256": sha256_file(required_path), "required_set_path": req_ref,
+               "required_items": len(required["items"]),
                "tau": tau, "selected_pair": selection["selected"], "eligible_pairs": selection["eligible_pairs"],
                "qualifying_pairs": selection["qualifying_pairs"], "runs_path_observable": len(selection["green_observable"]),
                "views": rows, "oracle_agreement": f"{agree}/{attainable}", "unsupported_proceed": unsupported,

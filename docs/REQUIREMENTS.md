@@ -24,3 +24,4 @@ Requirement IDs referenced in the code. Each one is a property the experiment ha
 | DR-18 | Command-line menu and plain flags share one engine; terse step-by-step output. |
 | DR-19 | Interactive front end is a terminal UI (no web server). |
 | DR-20 | Per-run model and key entry (OpenAI or Anthropic, model name, key); multiple RepoAudit models; keys in memory only; RepoAudit reaches providers only through the local gateway; a campaign cycle's models must match the locked protocol. |
+| DR-21 | Worked-example exhibit: each completed cycle's report and the terminal UI show the Three-GREENs case (verdicts, models, verdict-only PROCEED vs TAIP HOLD), a coverage matrix (required items × runs), and a run-vs-run / model-vs-model contrast with the exact, privacy-treated RepoAudit log excerpts behind it; exported as a self-contained HTML page; illustrative, never a replacement for the reported results. |

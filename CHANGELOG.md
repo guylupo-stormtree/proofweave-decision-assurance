@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- P4 reporting: `pwexp report --cycle ID` writes `RESULTS.md`, `EXHIBIT.html` (self-contained, for presenting), `timing.csv`, `assurance.csv`, `results.json` (every value with its source) and the paper LaTeX into the cycle's `report/` folder. Pilot output is stamped PILOT DATA.
+- Worked-example exhibit: the Three-GREENs view with each run's model and settings, verdict-only vs ProofWeave + TAIP vs oracle, an item × run coverage matrix, and a contrast for one requirement that one run covered and another (for example another model) did not, showing RepoAudit's own log excerpt by byte span. `--item` and `--runs` choose what to show; the default follows a declared rule.
+- `pwexp publish` (maintainer): publishes only the complete campaign cycle chosen by the protocol's selection rule, once, with a hash-chained publication record listing every campaign cycle; `--preview` rehearses publication for any complete cycle without recording it.
 - P3 Stage 4: required set R (kinds A analysed / V flow validated / S rule-scanned; `pwexp required-set draft` from our own `ast` parse, for human review), TAIP evaluator (admissibility: integrity, compatibility, synthetic exclusion; support, missing and violation sets; posture; gateway), verdict-only comparator, divergent-pair selection (fixed rule, same model context), evidence views P0–P9 and P2w, independent oracle package (`oracle`, no `pwexp` imports), deterministic replay, per-view `.dot` graphs. `pwexp run-stage 4`, `pwexp import-dev`.
 - Development fixture `tests/fixtures/dev-guarded-users/`: five GREEN RepoAudit runs (local development model) and one Semgrep run on `targets/fixture-guarded-users`, with a development-reviewed required set.
 - Stage 2 now checks that the target snapshot is available for entity resolution.

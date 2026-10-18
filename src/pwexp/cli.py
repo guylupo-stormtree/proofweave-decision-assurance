@@ -191,6 +191,29 @@ def cmd_required_draft(a) -> int:
     return 0
 
 
+def cmd_report(a) -> int:
+    from .report import results
+    try:
+        out = results.write(cycles.load(a.cycle), item_id=a.item, runs=a.runs)
+    except (cycles.CycleError, ValueError) as e:
+        _p(f"{FAIL} {e}")
+        return 1
+    _p(f"{OK} report for {a.cycle} → {out}")
+    _p(f"  RESULTS.md · EXHIBIT.html (open in a browser to present) · timing.csv · assurance.csv · paper/*.tex")
+    return 0
+
+
+def cmd_publish(a) -> int:
+    from .report import publish
+    try:
+        dest = publish.publish(a.cycle, a.reason, a.operator, preview=a.preview)
+    except (publish.PublishError, cycles.CycleError, protocol.ProtocolError) as e:
+        _p(f"{FAIL} {e}")
+        return 1
+    _p(f"{OK} {'preview of publication' if a.preview else 'published'} {a.cycle} → {dest}")
+    return 0
+
+
 def cmd_pending(a) -> int:
     _p(f"'{a.cmd}' becomes available in a later build phase (see docs/BUILD.md).")
     return 2
@@ -230,6 +253,17 @@ def main(argv: list[str] | None = None) -> int:
     rd.add_argument("--target", required=True)
     rd.add_argument("--out", required=True)
     rd.set_defaults(fn=cmd_required_draft)
+    rp = sub.add_parser("report", help="write a cycle's results page, tables, exhibit and paper LaTeX")
+    rp.add_argument("--cycle", required=True)
+    rp.add_argument("--item", help="exhibit: requirement to contrast (default: declared rule)")
+    rp.add_argument("--runs", nargs="+", help="exhibit: runs to show as the case (default: view P5)")
+    rp.set_defaults(fn=cmd_report)
+    pb = sub.add_parser("publish", help="maintainer: publish a campaign cycle as the paper's result")
+    pb.add_argument("--cycle", required=True)
+    pb.add_argument("--reason", default="")
+    pb.add_argument("--operator", default="maintainer")
+    pb.add_argument("--preview", action="store_true", help="rehearse into records/tmp (any complete cycle)")
+    pb.set_defaults(fn=cmd_publish)
     sub.add_parser("import-dev", help="import the development fixture (GREEN runs, guarded-users)").set_defaults(fn=cmd_import_dev)
     for name in ("verify", "replay", "ui"):
         s = sub.add_parser(name)
