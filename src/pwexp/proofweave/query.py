@@ -6,6 +6,7 @@ hashes behind each witness, so every answer is traceable to native bytes. Suppor
   {"kind": "A", "function": "<file>::<name>"}             an analysis unit about that function
   {"kind": "V", "functions": ["<file>::<a>", "<file>::<b>"]}
         a validated chain whose steps pass through those functions in that order
+  {"kind": "S", "file": "<file>"}                          a Semgrep scan that covered that file
 Unresolved functions never satisfy a requirement. Runs can be restricted (evidence views, Stage 4).
 """
 from __future__ import annotations
@@ -51,6 +52,11 @@ class QueryAPI:
                         for s in steps:
                             refs.update(s["refs"])
                         out.append({"run": rid, "witness": e["dst"], "refs": sorted(refs)})
+            elif req["kind"] == "S":
+                for e in self._out(run["id"], "scanned"):
+                    cov = [x for x in self._out(e["dst"], "covers") if x["dst"] == f"file:{req['file']}"]
+                    if cov:
+                        out.append({"run": rid, "witness": e["dst"], "refs": sorted(set(e["refs"] + cov[0]["refs"]))})
             else:
                 raise ValueError(f"unknown requirement kind {req['kind']}")
         return out

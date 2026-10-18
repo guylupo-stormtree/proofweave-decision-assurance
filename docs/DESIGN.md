@@ -50,7 +50,8 @@ A **Decision Gateway** decides whether a software change may proceed, partly fro
 - **RepoAudit is never modified.** It runs at a pinned commit, checked before and after every Stage 1. Model access goes through its own OpenAI SDK configuration.
 - **Decisions are deterministic.** No language model decides admissibility, coverage, posture or gateway action. Language models only produce evidence (inside RepoAudit) or explain it (bonus view).
 - **The required set R is independent.** It is derived from an independent parse of the target, reviewed by a person and locked before acquisition. It is never derived from RepoAudit's output.
-- **The oracle is independent.** It is a separate package that does not import the evaluator.
+- **The oracle is independent.** It is a separate package (`oracle`) that does not import `pwexp`: it reads the native RepoAudit and Semgrep files, the required set and the target source with its own parsing and coverage rules. Stage 4 checks this automatically.
+- **Required set kinds.** A: a function's None source was analysed; V: a flow from one function into another was validated (in order); S: a file was scanned by the pinned Semgrep rules. `pwexp required-set draft` proposes items from an `ast` parse of the target; a person reviews them before the lock.
 - **Keys are never stored.** API keys are entered per run, kept in memory only and never written to any record, log or output. Every Stage 1 scans its outputs for keys.
 - **Stage gating.** A stage starts only when the previous one completed with every check passing. Completion attests correct execution, not a favourable result.
 - **Campaign vs pilot.** Only a campaign cycle under the locked protocol, with the declared models, can be published. Pilot cycles never are. The rule for choosing among campaign cycles is declared before any of them runs (`selection_rule` in `protocol.yaml`), and every campaign cycle is reported.

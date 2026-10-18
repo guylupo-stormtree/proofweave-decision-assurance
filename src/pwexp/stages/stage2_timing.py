@@ -34,7 +34,8 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
     work = bundles(s1)
     if not work:
         raise ValueError("no sealed Stage 1 bundles to replay")
-    index = TargetIndex.from_snapshot(target_root(s1))
+    troot = target_root(s1)
+    index = TargetIndex.from_snapshot(troot)
     ctx_base = {"repo": cycle.data.get("target_repo", "target"), "commit": cycle.data.get("target_commit", ""),
                 "collection_policy": cycle.data.get("protocol_lock_sha256")}
     attempt = cycle.start(2)
@@ -81,6 +82,7 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
         "identical graph in every repetition (determinism)": len(set(hashes)) == 1,
         "graph rebuilt from the ledger equals the checkpoint": rebuild_ok,
         "sealed corpus ledger intact": not Ledger(corpus).verify(),
+        "target snapshot available for entity resolution": bool(troot and troot.is_dir() and index.functions),
         "corpus E sealed from authentic evidence only": not any('"synthetic": true' in l for l in
                                                                (corpus / "ledger.jsonl").read_text().splitlines()),
     }
@@ -89,5 +91,7 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
                "within_threshold": sum(o["within_threshold"] for o in obs), "components": comps,
                "corpus_sha256": corpus_hash, "graph_sha256": graph_hash, "records": corpus_plane.ledger.head[0] + 1,
                "graph_nodes": len(corpus_plane.store.nodes()), "graph_edges": len(corpus_plane.store.edges()),
+               "unresolved_functions": sorted(n["id"] for n in corpus_plane.store.nodes().values()
+                                              if n["kind"] == "function" and not n["attrs"].get("resolved")),
                "durability": params["durability"], "attempt_dir": out.name}
     return cycle.finish(2, checks, corpus_hash, outcome, operator)

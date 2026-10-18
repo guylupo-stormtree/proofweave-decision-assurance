@@ -14,12 +14,22 @@ from pwexp.stages import stage3_scale as s3
 FIX = Path(__file__).parent / "fixtures" / "iceccs-live-v1" / "python_npd"
 RUNS = ["gpt-4.1/run15", "gpt-4.1/run25", "gpt-4o-mini/run01"]
 QUIET = lambda m: None  # noqa: E731
+TOY = Path(__file__).parents[1] / "vendor" / "RepoAudit" / "benchmark" / "Python" / "toy"
+pytestmark = pytest.mark.skipif(not TOY.is_dir(), reason="RepoAudit submodule not initialised (target for entity resolution)")
+
+
+def _link_target(root: Path) -> None:
+    (root / "vendor" / "RepoAudit" / "benchmark" / "Python").mkdir(parents=True, exist_ok=True)
+    link = root / "vendor" / "RepoAudit" / "benchmark" / "Python" / "toy"
+    if not link.exists():
+        link.symlink_to(TOY)
 
 
 @pytest.fixture()
 def cycle(tmp_path, monkeypatch):
     monkeypatch.setenv("PWEXP_ROOT", str(tmp_path))
     (tmp_path / "records" / "published").mkdir(parents=True)
+    _link_target(tmp_path)
     return iceccs.import_cycle(FIX, RUNS)
 
 
@@ -71,6 +81,7 @@ def test_corpus_e_is_reproducible_across_cycles(tmp_path, monkeypatch):
     """Two independent cycles over the same evidence seal byte-identical corpora (reviewer replay, DR-17)."""
     monkeypatch.setenv("PWEXP_ROOT", str(tmp_path))
     (tmp_path / "records" / "published").mkdir(parents=True)
+    _link_target(tmp_path)
     a, b = iceccs.import_cycle(FIX, RUNS), iceccs.import_cycle(FIX, RUNS)
     s2.run(a, repetitions=1, progress=QUIET)
     s2.run(b, repetitions=1, progress=QUIET)

@@ -1,0 +1,55 @@
+2026-10-13 09:59:23,121 - INFO - Start data-flow bug scanning in parallel...
+2026-10-13 09:59:23,121 - INFO - Max number of workers: 4
+2026-10-13 09:59:23,122 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 09:59:23,122 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 09:59:23,123 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 09:59:23,123 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:00:05,801 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:00:14,118 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:01:00,013 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:01:07,421 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:01:40,682 - INFO - The LLM Tool PathValidator is invoked.
+2026-10-13 10:01:56,853 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:02:06,195 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:02:16,716 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:02:36,993 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:11:57,914 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:12:23,765 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 10:12:23,769 - INFO - 0 bug(s) was/were detected in total.
+2026-10-13 10:12:23,769 - INFO - The bug report(s) has/have been dumped to /home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/result/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-09-59-23-0/detect_info.json
+2026-10-13 10:12:23,769 - INFO - The log files are as follows:
+2026-10-13 10:12:23,769 - INFO - /home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/log/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-09-59-23-0/dfbscan.log
+/home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/src/llmtool/LLM_utils.py:5: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+/home/guylupo/dev/taip-assurance/experiment/vendor/.venv-repoaudit/lib/python3.13/site-packages/tree_sitter/__init__.py:36: FutureWarning: Language(path, name) is deprecated. Use Language(ptr, name) instead.
+  warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
+
+Parsing files:   0%|          | 0/2 [00:00<?, ?it/s]
+Parsing files: 100%|██████████| 2/2 [00:00<00:00, 1938.22it/s]
+
+Analyzing functions:   0%|          | 0/9 [00:00<?, ?it/s]
+Analyzing functions: 100%|██████████| 9/9 [00:00<00:00, 4791.06it/s]
+
+Analyzing call graphs:   0%|          | 0/9 [00:00<?, ?it/s]
+Analyzing call graphs: 100%|██████████| 9/9 [00:00<00:00, 7355.56it/s]
+
+Parsing files:   0%|          | 0/9 [00:00<?, ?it/s]
+Parsing files: 100%|██████████| 9/9 [00:00<00:00, 33054.94it/s]
+
+Processing Source Values:   0%|          | 0/8 [00:00<?, ?src/s]
+Processing Source Values:  12%|█▎        | 1/8 [00:42<04:58, 42.68s/src]
+Processing Source Values:  25%|██▌       | 2/8 [02:33<08:17, 82.90s/src]
+Processing Source Values:  38%|███▊      | 3/8 [02:43<04:06, 49.31s/src]
+Processing Source Values:  50%|█████     | 4/8 [02:53<02:15, 34.00s/src]
+Processing Source Values:  62%|██████▎   | 5/8 [03:22<01:36, 32.24s/src]
+Processing Source Values:  75%|███████▌  | 6/8 [04:01<01:09, 34.61s/src]
+Processing Source Values:  88%|████████▊ | 7/8 [09:59<02:20, 140.32s/src]
+Processing Source Values: 100%|██████████| 8/8 [13:00<00:00, 153.20s/src]
+Processing Source Values: 100%|██████████| 8/8 [13:00<00:00, 97.58s/src] 

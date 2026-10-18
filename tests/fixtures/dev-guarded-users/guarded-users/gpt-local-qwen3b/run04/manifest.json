@@ -1,0 +1,57 @@
+{
+  "run_id": "49edeb85-e9bb-41c1-86a4-3160613e250b",
+  "replicate": 4,
+  "pilot": false,
+  "requested_model": "gpt-local-qwen3b",
+  "language": "Python",
+  "bug_type": "NPD",
+  "target": "/home/guylupo/dev/taip-assurance/experiment/targets/guarded-users",
+  "target_tree_sha256": "f70be485a4332d641e3cf0abbad90e2d2ef60853eadd1de1601266b1e4c660cc",
+  "repoaudit_commit": "160f5bcd378a02a2417e32e999f93ef5fa0f5e64",
+  "subject_state_before": {
+    "head": "160f5bcd378a02a2417e32e999f93ef5fa0f5e64",
+    "pinned": true,
+    "tracked_files_modified": false
+  },
+  "temperature": 0.0,
+  "call_depth": 3,
+  "workers": 4,
+  "base_url": "http://127.0.0.1:11434/v1",
+  "cmd": [
+    "/home/guylupo/dev/taip-assurance/experiment/vendor/.venv-repoaudit/bin/python",
+    "repoaudit.py",
+    "--scan-type",
+    "dfbscan",
+    "--language",
+    "Python",
+    "--model-name",
+    "gpt-local-qwen3b",
+    "--project-path",
+    "/home/guylupo/dev/taip-assurance/experiment/targets/guarded-users",
+    "--bug-type",
+    "NPD",
+    "--is-reachable",
+    "--temperature",
+    "0.0",
+    "--call-depth",
+    "3",
+    "--max-neural-workers",
+    "4"
+  ],
+  "start_time": "2026-10-13T08:32:18.594221+00:00",
+  "wall_clock_seconds": 1220.1,
+  "exit_code": 0,
+  "timed_out": false,
+  "completion_state": "complete",
+  "findings_count": 0,
+  "native_paths": {
+    "log_dir": "/home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/log/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-08-32-20-0",
+    "result_dir": "/home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/result/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-08-32-20-0"
+  },
+  "detect_info_synthesised_empty": false,
+  "output_checksums": {
+    "console.log": "57d9ba3ef12cb5722c96faa261deaf6ce39c38ec1cad18d1f58a1cb7016ed756",
+    "detect_info.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "dfbscan.log": "63d2125c881d28929243a04a6958e4c6c91b6399ac5a04dc48fe434a60be9307"
+  }
+}

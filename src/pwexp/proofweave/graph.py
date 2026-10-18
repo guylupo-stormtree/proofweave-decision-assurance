@@ -211,9 +211,21 @@ class Weaver:
                 for fn in p.get("functions", []):
                     f = next((x for x in self.index.by_name(fn.get("name")) if x.file == fn.get("file")), None)
                     self.store.add_edge(node, f.node_id if f else self._fn_by_name(fn.get("name"), ref), "involves", {}, ref)
-            elif et.startswith("semgrep."):
-                self.store.add_node(node, et.split(".")[-1], {k: v for k, v in p.items() if not isinstance(v, (list, dict))}, ref)
-                self.store.add_edge(run, node, "scanned" if et == "semgrep.scan" else "reported", {}, ref)
+            elif et == "semgrep.scan":
+                self.store.add_node(node, "scan", {k: v for k, v in p.items() if not isinstance(v, (list, dict))}, ref)
+                self.store.add_edge(run, node, "scanned", {}, ref)
+                for f in p.get("scanned", []):
+                    self.store.add_node(f"file:{f}", "file", {"file": f}, ref)
+                    self.store.add_edge(node, f"file:{f}", "covers", {}, ref)
+            elif et == "semgrep.finding":
+                self.store.add_node(node, "finding", {"check_id": p.get("check_id"), "file": p.get("file"),
+                                                      "line": p.get("line"), "producer": "semgrep"}, ref)
+                self.store.add_edge(run, node, "reported", {}, ref)
+                if p.get("file"):
+                    self.store.add_edge(node, f"file:{p['file']}", "in_file", {}, ref)
+                    f = self.index.enclosing(p["file"], int(p.get("line") or -1))
+                    if f:
+                        self.store.add_edge(node, f.node_id, "involves", {}, ref)
             self.store.watermark = r["seq"]
             n += 1
         return n

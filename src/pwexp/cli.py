@@ -120,19 +120,23 @@ def cmd_import_iceccs(a) -> int:
 
 
 def cmd_run_stage(a) -> int:
-    from .stages import stage2_timing, stage3_scale
+    from pathlib import Path
+    from .stages import stage2_timing, stage3_scale, stage4_decisions
     try:
         c = cycles.load(a.cycle)
         ok, why = c.can_start(a.stage)
         if not ok:
             _p(f"{FAIL} cannot start Stage {a.stage}: {why}")
             return 1
-        runner = {2: stage2_timing.run, 3: stage3_scale.run}.get(a.stage)
-        if runner is None:
-            _p("Stage 1 needs per-run model keys: use the terminal UI (P5). Stage 4 arrives in P3.")
-            return 2
+        prog = lambda m: _p(f"  {m}")  # noqa: E731
         _p(f"Stage {a.stage}  {cycles.STAGES[a.stage]} …")
-        passed = runner(c, repetitions=a.repetitions, operator=a.operator, progress=lambda m: _p(f"  {m}"))
+        if a.stage == 2:
+            passed = stage2_timing.run(c, repetitions=a.repetitions, operator=a.operator, progress=prog)
+        elif a.stage == 3:
+            passed = stage3_scale.run(c, repetitions=a.repetitions, operator=a.operator, progress=prog)
+        else:
+            passed = stage4_decisions.run(c, required_path=Path(a.required) if a.required else None, tau=a.tau,
+                                          operator=a.operator, progress=prog)
     except (cycles.CycleError, ValueError) as e:
         _p(f"{FAIL} {e}")
         return 1
@@ -143,10 +147,48 @@ def cmd_run_stage(a) -> int:
     if a.stage == 2:
         _p(f"{OK if passed else FAIL} Stage 2 · median {o['median_ms']} ms · max {o['max_ms']} ms · "
            f"{o['within_threshold']}/{o['observations']} within {o['threshold_s']} s · corpus E {o['corpus_sha256'][:12]}")
-    else:
+    elif a.stage == 3:
         _p(f"{OK if passed else FAIL} Stage 3 · largest {o['largest_volume']} records · max ready "
            f"{o['max_ready_ms_at_largest']} ms · threshold crossing: {o['threshold_crossing']}")
+    else:
+        _p(f"  {'view':5} {'verdict-only':12} {'TAIP':13} {'gateway':8} oracle")
+        for vid, r in o["views"].items():
+            if r["attainable"]:
+                _p(f"  {vid:5} {r['verdict_only']:12} {r['observed']:13} {r['action']:8} {'agrees' if r['agree'] else 'DISAGREES'}")
+            else:
+                _p(f"  {vid:5} unattained: {r['note']}")
+        _p(f"{OK if passed else FAIL} Stage 4 · Three-GREEN case: {o['three_green_case']}")
+        _p(f"  oracle agreement {o['oracle_agreement']} · unsupported PROCEED {o['unsupported_proceed']} · "
+           f"replay {o['replay_agreement']}")
     return 0 if passed else 1
+
+
+def cmd_import_dev(a) -> int:
+    from pathlib import Path
+    from .importers import devfixture
+    from .paths import repo_root
+    fix = repo_root() / "tests" / "fixtures" / "dev-guarded-users"
+    runs = ["guarded-users/gpt-local-qwen3b/run02", "guarded-users/gpt-local-qwen3b/run04",
+            "guarded-users/gpt-local-qwen3b/run06", "guarded-users-t05/gpt-local-qwen3b/run01",
+            "guarded-users-t05/gpt-local-qwen3b/run05"]
+    c = devfixture.import_cycle(fix, runs, semgrep=["semgrep/run001"])
+    o = c.data["stages"]["1"]["outcome"]
+    _p(f"{OK} imported dev fixture as {c.id} (pilot, fixture only) · RepoAudit GREEN {o['repoaudit_green']}/"
+       f"{o['repoaudit_runs']} · Semgrep GREEN {o['semgrep_green']}/{o['semgrep_runs']} · Stage 2 unlocked")
+    _p(f"  Stage 4 required set: {fix / 'required-set.json'}")
+    return 0
+
+
+def cmd_required_draft(a) -> int:
+    import json
+    from pathlib import Path
+    from .taip.requirements import draft
+    d = draft(Path(a.target))
+    Path(a.out).write_text(json.dumps(d, indent=2) + "\n")
+    kinds = {k: sum(1 for i in d["items"] if i["kind"] == k) for k in "AVS"}
+    _p(f"{OK} drafted {len(d['items'])} items (A {kinds['A']} · V {kinds['V']} · S {kinds['S']}) → {a.out}")
+    _p("  This is a DRAFT from our own parse of the target. It must be reviewed by a person before the protocol lock.")
+    return 0
 
 
 def cmd_pending(a) -> int:
@@ -176,11 +218,19 @@ def main(argv: list[str] | None = None) -> int:
     im.add_argument("--runs", nargs="+", required=True, help="e.g. gpt-4.1/run25 gpt-4o-mini/run01")
     im.set_defaults(fn=cmd_import_iceccs)
     rs = sub.add_parser("run-stage", help="run Stage 2 or 3 on a cycle")
-    rs.add_argument("stage", type=int, choices=[2, 3])
+    rs.add_argument("stage", type=int, choices=[2, 3, 4])
+    rs.add_argument("--required", help="required set JSON (pilot cycles; campaign cycles use the locked one)")
+    rs.add_argument("--tau", type=float, help="divergence threshold (pilot cycles; campaign uses the lock)")
     rs.add_argument("--cycle", required=True)
     rs.add_argument("--repetitions", type=int)
     rs.add_argument("--operator", default="cli")
     rs.set_defaults(fn=cmd_run_stage)
+    rd = sub.add_parser("required-set", help="draft the required set R from a target (for human review)")
+    rd.add_argument("action", choices=["draft"])
+    rd.add_argument("--target", required=True)
+    rd.add_argument("--out", required=True)
+    rd.set_defaults(fn=cmd_required_draft)
+    sub.add_parser("import-dev", help="import the development fixture (GREEN runs, guarded-users)").set_defaults(fn=cmd_import_dev)
     for name in ("verify", "replay", "ui"):
         s = sub.add_parser(name)
         s.add_argument("--published", action="store_true")

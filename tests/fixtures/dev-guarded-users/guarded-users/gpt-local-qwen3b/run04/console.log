@@ -1,0 +1,75 @@
+2026-10-13 08:32:20,342 - INFO - Start data-flow bug scanning in parallel...
+2026-10-13 08:32:20,342 - INFO - Max number of workers: 4
+2026-10-13 08:32:20,343 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:32:20,343 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:32:20,344 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:32:20,344 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:33:26,291 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:33:37,354 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:33:37,488 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:34:53,207 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:36:22,663 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:36:22,663 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:37:49,805 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:37:49,806 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:39:07,841 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:39:07,842 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:39:49,927 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:40:33,313 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:41:36,388 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:41:57,701 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:41:57,701 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:41:57,701 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:42:14,905 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:42:31,507 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:43:10,044 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:43:10,044 - INFO - The LLM Tool PathValidator is invoked.
+2026-10-13 08:43:53,217 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:04,749 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:04,749 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:04,749 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:04,749 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:04,749 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:16,844 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:49,613 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:49,613 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:45:49,613 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:46:29,880 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:52:38,331 - INFO - 0 bug(s) was/were detected in total.
+2026-10-13 08:52:38,331 - INFO - The bug report(s) has/have been dumped to /home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/result/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-08-32-20-0/detect_info.json
+2026-10-13 08:52:38,331 - INFO - The log files are as follows:
+2026-10-13 08:52:38,331 - INFO - /home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/log/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-08-32-20-0/dfbscan.log
+/home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/src/llmtool/LLM_utils.py:5: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+/home/guylupo/dev/taip-assurance/experiment/vendor/.venv-repoaudit/lib/python3.13/site-packages/tree_sitter/__init__.py:36: FutureWarning: Language(path, name) is deprecated. Use Language(ptr, name) instead.
+  warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
+
+Parsing files:   0%|          | 0/2 [00:00<?, ?it/s]
+Parsing files: 100%|██████████| 2/2 [00:00<00:00, 1810.23it/s]
+
+Analyzing functions:   0%|          | 0/9 [00:00<?, ?it/s]
+Analyzing functions: 100%|██████████| 9/9 [00:00<00:00, 4099.56it/s]
+
+Analyzing call graphs:   0%|          | 0/9 [00:00<?, ?it/s]
+Analyzing call graphs: 100%|██████████| 9/9 [00:00<00:00, 6847.22it/s]
+
+Parsing files:   0%|          | 0/9 [00:00<?, ?it/s]
+Parsing files: 100%|██████████| 9/9 [00:00<00:00, 30815.29it/s]
+
+Processing Source Values:   0%|          | 0/8 [00:00<?, ?src/s]
+Processing Source Values:  12%|█▎        | 1/8 [04:02<28:16, 242.32s/src]
+Processing Source Values:  25%|██▌       | 2/8 [06:47<19:41, 196.95s/src]
+Processing Source Values:  38%|███▊      | 3/8 [08:12<12:10, 146.04s/src]
+Processing Source Values:  50%|█████     | 4/8 [09:37<08:06, 121.70s/src]
+Processing Source Values:  62%|██████▎   | 5/8 [11:27<05:52, 117.52s/src]
+Processing Source Values:  75%|███████▌  | 6/8 [12:44<03:27, 103.72s/src]
+Processing Source Values:  88%|████████▊ | 7/8 [14:09<01:37, 97.64s/src] 
+Processing Source Values: 100%|██████████| 8/8 [20:17<00:00, 183.86s/src]
+Processing Source Values: 100%|██████████| 8/8 [20:17<00:00, 152.25s/src]

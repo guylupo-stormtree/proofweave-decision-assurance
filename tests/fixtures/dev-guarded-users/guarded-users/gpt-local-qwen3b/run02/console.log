@@ -1,0 +1,63 @@
+2026-10-13 07:52:47,665 - INFO - Start data-flow bug scanning in parallel...
+2026-10-13 07:52:47,665 - INFO - Max number of workers: 4
+2026-10-13 07:52:47,665 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:52:47,666 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:52:47,666 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:52:47,668 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:53:49,237 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:54:04,262 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:55:17,095 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:55:28,736 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:55:28,737 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:56:01,162 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:56:36,381 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:56:36,381 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:56:49,134 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:57:15,270 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:57:15,270 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:58:12,821 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 07:58:33,288 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:01:23,906 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:09:06,128 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:09:41,374 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:09:59,392 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:10:16,970 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:10:35,024 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-10-13 08:10:35,029 - INFO - 0 bug(s) was/were detected in total.
+2026-10-13 08:10:35,029 - INFO - The bug report(s) has/have been dumped to /home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/result/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-07-52-47-0/detect_info.json
+2026-10-13 08:10:35,029 - INFO - The log files are as follows:
+2026-10-13 08:10:35,029 - INFO - /home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/log/dfbscan/gpt-local-qwen3b/NPD/Python/guarded-users/2026-10-13-07-52-47-0/dfbscan.log
+/home/guylupo/dev/taip-assurance/experiment/vendor/RepoAudit/src/llmtool/LLM_utils.py:5: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+/home/guylupo/dev/taip-assurance/experiment/vendor/.venv-repoaudit/lib/python3.13/site-packages/tree_sitter/__init__.py:36: FutureWarning: Language(path, name) is deprecated. Use Language(ptr, name) instead.
+  warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
+
+Parsing files:   0%|          | 0/2 [00:00<?, ?it/s]
+Parsing files: 100%|██████████| 2/2 [00:00<00:00, 1583.05it/s]
+
+Analyzing functions:   0%|          | 0/9 [00:00<?, ?it/s]
+Analyzing functions: 100%|██████████| 9/9 [00:00<00:00, 1956.60it/s]
+
+Analyzing call graphs:   0%|          | 0/9 [00:00<?, ?it/s]
+Analyzing call graphs: 100%|██████████| 9/9 [00:00<00:00, 5585.79it/s]
+
+Parsing files:   0%|          | 0/9 [00:00<?, ?it/s]
+Parsing files: 100%|██████████| 9/9 [00:00<00:00, 33026.02it/s]
+
+Processing Source Values:   0%|          | 0/8 [00:00<?, ?src/s]
+Processing Source Values:  12%|█▎        | 1/8 [02:29<17:26, 149.43s/src]
+Processing Source Values:  25%|██▌       | 2/8 [03:13<08:44, 87.46s/src] 
+Processing Source Values:  38%|███▊      | 3/8 [03:48<05:18, 63.60s/src]
+Processing Source Values:  50%|█████     | 4/8 [04:27<03:35, 53.84s/src]
+Processing Source Values:  62%|██████▎   | 5/8 [06:38<04:05, 81.73s/src]
+Processing Source Values:  75%|███████▌  | 6/8 [16:02<08:11, 245.65s/src]
+Processing Source Values:  88%|████████▊ | 7/8 [16:53<03:02, 182.04s/src]
+Processing Source Values: 100%|██████████| 8/8 [17:47<00:00, 141.17s/src]
+Processing Source Values: 100%|██████████| 8/8 [17:47<00:00, 133.42s/src]

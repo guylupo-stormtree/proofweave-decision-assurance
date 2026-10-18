@@ -23,12 +23,19 @@ def parse_run(run_dir: Path) -> tuple[dict[str, Any], list[Observation]]:
     except ValueError:
         doc = {}
     sha = sha256_bytes(data)
-    scanned = doc.get("paths", {}).get("scanned", [])
+    root = (man.get("cmd") or [""])[-1].rstrip("/")  # the target directory Semgrep was given
+
+    def rel(path: str | None) -> str | None:
+        if path and root and path.startswith(root + "/"):
+            return path[len(root) + 1:]
+        return path
+
+    scanned = sorted(rel(x) for x in doc.get("paths", {}).get("scanned", []))
     obs.append(Observation("semgrep.scan", {"scanned": scanned, "files_scanned": len(scanned),
                                             "errors": len(doc.get("errors", [])), "version": doc.get("version")},
                            {"file": "semgrep.json", "sha256": sha, "pointer": "/paths"}))
     for i, r in enumerate(doc.get("results", [])):
-        obs.append(Observation("semgrep.finding", {"check_id": r.get("check_id"), "file": r.get("path"),
+        obs.append(Observation("semgrep.finding", {"check_id": r.get("check_id"), "file": rel(r.get("path")),
                                                    "line": (r.get("start") or {}).get("line")},
                                {"file": "semgrep.json", "sha256": sha, "pointer": f"/results/{i}"}))
     return man, obs

@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "target": "targets/fixture-guarded-users",
+  "items": [
+    {
+      "id": "R01",
+      "kind": "A",
+      "function": "directory.py::find_user",
+      "why": "contains a None source"
+    },
+    {
+      "id": "R02",
+      "kind": "A",
+      "function": "directory.py::load_profile",
+      "why": "binds a call result that may be None"
+    },
+    {
+      "id": "R03",
+      "kind": "A",
+      "function": "directory.py::display_name",
+      "why": "binds a call result that may be None"
+    },
+    {
+      "id": "R04",
+      "kind": "A",
+      "function": "directory.py::resolve_manager",
+      "why": "contains a None source"
+    },
+    {
+      "id": "R05",
+      "kind": "A",
+      "function": "directory.py::manager_email",
+      "why": "binds a call result that may be None"
+    },
+    {
+      "id": "R06",
+      "kind": "A",
+      "function": "report.py::latest_login",
+      "why": "contains a None source"
+    },
+    {
+      "id": "R07",
+      "kind": "A",
+      "function": "report.py::login_summary",
+      "why": "binds a call result that may be None"
+    },
+    {
+      "id": "R08",
+      "kind": "A",
+      "function": "report.py::escalation_chain",
+      "why": "binds a call result that may be None"
+    },
+    {
+      "id": "R09",
+      "kind": "V",
+      "functions": [
+        "directory.py::find_user",
+        "directory.py::display_name"
+      ],
+      "why": "None-returning callee flows into caller"
+    },
+    {
+      "id": "R10",
+      "kind": "V",
+      "functions": [
+        "directory.py::find_user",
+        "directory.py::load_profile"
+      ],
+      "why": "None-returning callee flows into caller"
+    },
+    {
+      "id": "R11",
+      "kind": "V",
+      "functions": [
+        "directory.py::find_user",
+        "directory.py::resolve_manager"
+      ],
+      "why": "None-returning callee flows into caller"
+    },
+    {
+      "id": "R12",
+      "kind": "V",
+      "functions": [
+        "directory.py::resolve_manager",
+        "directory.py::manager_email"
+      ],
+      "why": "None-returning callee flows into caller"
+    },
+    {
+      "id": "R13",
+      "kind": "V",
+      "functions": [
+        "directory.py::resolve_manager",
+        "report.py::escalation_chain"
+      ],
+      "why": "None-returning callee flows into caller"
+    },
+    {
+      "id": "R14",
+      "kind": "V",
+      "functions": [
+        "report.py::latest_login",
+        "report.py::login_summary"
+      ],
+      "why": "None-returning callee flows into caller"
+    },
+    {
+      "id": "R15",
+      "kind": "S",
+      "file": "directory.py",
+      "why": "file scanned by the pinned fixed rules"
+    },
+    {
+      "id": "R16",
+      "kind": "S",
+      "file": "report.py",
+      "why": "file scanned by the pinned fixed rules"
+    }
+  ],
+  "derivation": "pwexp required-set draft: own ast parse of the target (independent of RepoAudit output)",
+  "review": {
+    "status": "FIXTURE: maintainer development review only; not the independent human review a campaign requires",
+    "by": "maintainers (development)",
+    "date": "2026-10-18"
+  }
+}

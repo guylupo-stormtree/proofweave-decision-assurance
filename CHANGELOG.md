@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- P3 Stage 4: required set R (kinds A analysed / V flow validated / S rule-scanned; `pwexp required-set draft` from our own `ast` parse, for human review), TAIP evaluator (admissibility: integrity, compatibility, synthetic exclusion; support, missing and violation sets; posture; gateway), verdict-only comparator, divergent-pair selection (fixed rule, same model context), evidence views P0–P9 and P2w, independent oracle package (`oracle`, no `pwexp` imports), deterministic replay, per-view `.dot` graphs. `pwexp run-stage 4`, `pwexp import-dev`.
+- Development fixture `tests/fixtures/dev-guarded-users/`: five GREEN RepoAudit runs (local development model) and one Semgrep run on `targets/fixture-guarded-users`, with a development-reviewed required set.
+- Stage 2 now checks that the target snapshot is available for entity resolution.
 - P2 ProofWeave: RepoAudit and Semgrep adapters (every observation carries the exact byte span or JSON pointer of its native source), Bind (envelope, privacy treatment, context), append-only hash-chained ledger with content-addressed native blobs, Graph Weaver (deterministic, rebuildable from the ledger; entity resolution by our own `ast` parse of the target), Query API (A/V witness queries, readiness probe), Graphviz export.
 - Stage 2: timed replay t0–t4 per bundle against the 5 s reference threshold over repetitions; determinism checks; corpus E sealed (content-derived, reproducible across cycles).
 - Stage 3: volume sweep 10 → 10,000 records with marked, segregated synthetic bundles that carry distinct native bytes (no blob deduplication bias).
