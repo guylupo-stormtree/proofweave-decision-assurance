@@ -1,0 +1,45 @@
+{
+    "0": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py, 12, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py"
+            ],
+            [
+                "test1_get_object",
+                "test1_main",
+                "test1_process_object"
+            ],
+            [
+                "def test1_get_object(flag: bool):\n    if flag:\n        return MyObject(\"hello\")\n    else:\n        return None",
+                "def test1_main():\n    obj = test1_get_object(False)\n    obj.test1_foo()\n    test1_process_object(obj)",
+                "def test1_process_object(obj: MyObject):\n    print(obj.value.upper(), \"a\", \"d\")\n    return"
+            ]
+        ],
+        "explanation": "Explanation: The function `test1_get_object` returns `None` when the `flag` is `False`, which is the case in the provided propagation path. In `test1_main`, `obj` is assigned the return value of `test1_get_object(False)`, which means `obj` will be `None`. When `obj` is passed to `test1_process_object`, it is treated as an instance of `MyObject`, leading to an attempt to access `obj.value` in line 2 of `test1_process_object`. Since `obj` is `None`, this will raise a TypeError when trying to access `value` on `None`. There are no conflicting conditions that would prevent this path from being executed, thus the propagation path is reachable and causes the NPD bug. \n\nAnswer: Yes.",
+        "is_human_confirmed_true": "False"
+    },
+    "1": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py, 12, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py"
+            ],
+            [
+                "test1_get_object",
+                "test1_main"
+            ],
+            [
+                "def test1_get_object(flag: bool):\n    if flag:\n        return MyObject(\"hello\")\n    else:\n        return None",
+                "def test1_main():\n    obj = test1_get_object(False)\n    obj.test1_foo()\n    test1_process_object(obj)"
+            ]
+        ],
+        "explanation": "Explanation: In the function `test1_get_object`, when the `flag` is `False`, the function returns `None` at line 5. In the `test1_main` function, this `None` value is assigned to `obj` at line 2. Subsequently, at line 3, the code attempts to call `obj.test1_foo()`, which will result in a TypeError since `obj` is `None`. There are no conflicting conditions that would prevent this path from being executed, and thus the propagation path is reachable and causes the NPD bug. \n\nAnswer: Yes.",
+        "is_human_confirmed_true": "False"
+    }
+}

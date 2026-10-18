@@ -1,0 +1,137 @@
+{
+    "0": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case02.py, 5, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case02.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case02.py"
+            ],
+            [
+                "test2_caller",
+                "test2_process"
+            ],
+            [
+                "def test2_caller():\n    data = None\n    return test2_process(data)",
+                "def test2_process(data):\n    return data[0]"
+            ]
+        ],
+        "explanation": "Explanation: In the function test2_caller, the variable data is explicitly set to None and then passed as an argument to test2_process. In test2_process, the parameter data receives this None value and is immediately dereferenced with data[0] at line 2. Since there are no checks or guards to verify whether data is not None before this dereference, the code will attempt to access the first element of None, which will raise a TypeError (or, in the context of NPD, a null pointer dereference). There are no conflicting branch conditions or early returns that would prevent this path from being executed. Therefore, the propagation path is reachable and causes the NPD bug.\nAnswer: Yes",
+        "is_human_confirmed_true": "False"
+    },
+    "1": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py, 12, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py"
+            ],
+            [
+                "test1_get_object",
+                "test1_main",
+                "test1_process_object"
+            ],
+            [
+                "def test1_get_object(flag: bool):\n    if flag:\n        return MyObject(\"hello\")\n    else:\n        return None",
+                "def test1_main():\n    obj = test1_get_object(False)\n    obj.test1_foo()\n    test1_process_object(obj)",
+                "def test1_process_object(obj: MyObject):\n    print(obj.value.upper(), \"a\", \"d\")\n    return"
+            ]
+        ],
+        "explanation": "Explanation: In the function test1_get_object, when flag is False, the function returns None (line 5). In test1_main, test1_get_object is called with False, so obj is assigned None (line 2). Then, obj is passed as an argument to test1_process_object (line 4) without any checks or modifications. In test1_process_object, obj is used at line 2 as obj.value.upper(), which dereferences obj. Since obj is None, this will cause an AttributeError (NPD bug) when trying to access value on None. There are no branch conditions or checks that prevent this propagation, and the None value flows directly from the source to the sink.\nAnswer: Yes",
+        "is_human_confirmed_true": "False"
+    },
+    "2": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py, 12, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case01.py"
+            ],
+            [
+                "test1_get_object",
+                "test1_main"
+            ],
+            [
+                "def test1_get_object(flag: bool):\n    if flag:\n        return MyObject(\"hello\")\n    else:\n        return None",
+                "def test1_main():\n    obj = test1_get_object(False)\n    obj.test1_foo()\n    test1_process_object(obj)"
+            ]
+        ],
+        "explanation": "Explanation: In test1_main, the function test1_get_object is called with the argument False. Looking at test1_get_object, when flag is False, the function returns None (line 5). This None value is assigned to obj in test1_main (line 2). Immediately after, obj.test1_foo() is called (line 3). Since obj is None at this point, attempting to call a method on None will raise an AttributeError (which is the Python equivalent of a null pointer dereference). There are no branch conditions or checks that prevent obj from being None before the method call, and the propagation path from the return of None in test1_get_object to the dereference in test1_main is direct and unguarded.\nAnswer: Yes",
+        "is_human_confirmed_true": "False"
+    },
+    "3": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case03.py, 2, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case03.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case03.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case03.py"
+            ],
+            [
+                "test3_get_data",
+                "test3_main",
+                "test3_transform_data"
+            ],
+            [
+                "def test3_get_data():\n    return None",
+                "def test3_main():\n    data = test3_get_data()\n    return test3_transform_data(data)  # Null dereference",
+                "def test3_transform_data(data):\n    return data.upper()  # Attempting to call method on None"
+            ]
+        ],
+        "explanation": "Explanation: In the provided code, test3_get_data() always returns None. In test3_main(), data is assigned the result of test3_get_data(), so data is always None. test3_main() then calls test3_transform_data(data), passing None as the argument. In test3_transform_data, the parameter data is thus always None, and the function attempts to call data.upper(), which will raise an AttributeError (or TypeError) because NoneType does not have an upper() method. There are no branch conditions or checks that would prevent this dereference of None, nor is the value of data modified or checked before the sink. Therefore, the propagation path is reachable and causes the NPD bug.\nAnswer: Yes",
+        "is_human_confirmed_true": "False"
+    },
+    "4": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case05.py, 2, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case05.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case05.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case05.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case05.py"
+            ],
+            [
+                "test5_get_list",
+                "test5_use_list",
+                "test5_middle",
+                "test5_inner"
+            ],
+            [
+                "def test5_get_list():\n    return [None] * 5",
+                "def test5_use_list():\n    lst = test5_get_list()\n    return test5_middle(lst)",
+                "def test5_middle(lst):\n    return test5_inner(lst)",
+                "def test5_inner(lst):\n    return lst[2].attr"
+            ]
+        ],
+        "explanation": "Explanation: The function test5_get_list returns a list of length 5 where every element is None, i.e., [None, None, None, None, None]. This list is passed through test5_use_list and test5_middle without any modification or checks, and finally reaches test5_inner. In test5_inner, the code accesses lst[2].attr. Since lst[2] is None (as set by test5_get_list), attempting to access the attr attribute of None will raise an AttributeError (which is a form of NPD bug in Python). There are no branch conditions or checks that prevent this dereference, and the None value flows unimpeded from the source to the sink.\nAnswer: Yes",
+        "is_human_confirmed_true": "False"
+    },
+    "5": {
+        "bug_type": "NPD",
+        "buggy_value": "((None, /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case04.py, 15, -1), ValueLabel.SRC)",
+        "relevant_functions": [
+            [
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case04.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case04.py",
+                "/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/benchmark/Python/toy/NPD/case04.py"
+            ],
+            [
+                "test4_test",
+                "test4_middle_call",
+                "test4_inner_call"
+            ],
+            [
+                "def test4_test():\n    obj = Test4_Example(None)\n    return test4_middle_call(obj)",
+                "def test4_middle_call(obj):\n    return test4_inner_call(obj)",
+                "def test4_inner_call(obj):\n    return obj.get_value()"
+            ]
+        ],
+        "explanation": "Explanation: In the function test4_test, obj is assigned as Test4_Example(None). However, the definition of Test4_Example is not provided, so we cannot assume what obj will be\u2014whether it is None or a valid object. The obj is then passed through test4_middle_call to test4_inner_call, where obj.get_value() is called. If Test4_Example(None) returns None, then obj is None and calling get_value() will cause an AttributeError (NPD bug). If Test4_Example(None) returns a valid object (even if its internal state is None), then obj.get_value() will not cause an NPD bug at the call site. Since there is no branch or check in the code that guards against obj being None, and since the propagation path allows obj to be None, the path is reachable and can cause the NPD bug, assuming Test4_Example(None) can return None. As per the guidelines, we do not assume any behavior for Test4_Example beyond what is shown, so the path is reachable.\nAnswer: Yes",
+        "is_human_confirmed_true": "False"
+    }
+}

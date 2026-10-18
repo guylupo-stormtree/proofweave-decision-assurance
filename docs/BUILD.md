@@ -39,4 +39,4 @@ PWEXP_DEV=1 …   # enables the dev-only "local" OpenAI-compatible provider (nev
 
 Tests: adapter on real native logs (source refs resolve to the exact bytes); ledger tamper and deletion detection; graph rebuilt from ledger alone is identical; components sum to t4 − t0; synthetic records never mixed into the authentic corpus; replay of Stage 2 gives identical corpus E hash.
 
-Development evidence: a keyless dev pilot on `fixture-guarded-users` (local model, `PWEXP_DEV=1`) gives realistic analysis units and validated chains for the tests. It is a fixture, never a result.
+Development evidence: five RepoAudit runs from the first study's public dataset (`tests/fixtures/iceccs-live-v1/`, imported with `pwexp import-iceccs`) give real-model analysis units and validated chains for the tests. They are fixtures, never results.

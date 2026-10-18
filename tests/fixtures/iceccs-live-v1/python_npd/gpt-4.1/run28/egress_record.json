@@ -1,0 +1,10 @@
+{
+  "allowed_hosts": [
+    "api.openai.com"
+  ],
+  "observed_hosts": [
+    "api.openai.com"
+  ],
+  "unexpected_hosts": [],
+  "conformant": true
+}

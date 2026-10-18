@@ -131,7 +131,7 @@ def _next_id(mode: str) -> str:
 
 
 def create(mode: str, protocol_lock_sha256: str | None, models: list[dict[str, str]] | None = None,
-           replay_of: str | None = None) -> Cycle:
+           replay_of: str | None = None, meta: dict[str, Any] | None = None) -> Cycle:
     if mode not in MODES:
         raise CycleError(f"mode must be one of {MODES}")
     if mode == "campaign" and not protocol_lock_sha256:
@@ -149,6 +149,8 @@ def create(mode: str, protocol_lock_sha256: str | None, models: list[dict[str, s
         "protocol_lock_sha256": protocol_lock_sha256, "code": code_commit(),
         "models": models or [], "replay_of": replay_of, "stages": stages,
     }
+    if meta:
+        data.update(meta)
     c = Cycle(path, data)
     c.save()
     return c

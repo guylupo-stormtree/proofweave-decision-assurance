@@ -1,0 +1,48 @@
+/Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/src/llmtool/LLM_utils.py:5: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+/Users/guylupo/.venvs/taip-repoaudit/lib/python3.13/site-packages/tree_sitter/__init__.py:36: FutureWarning: Language(path, name) is deprecated. Use Language(ptr, name) instead.
+  warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
+Parsing files:   0%|          | 0/5 [00:00<?, ?it/s]Parsing files: 100%|██████████| 5/5 [00:00<00:00, 5353.97it/s]
+Analyzing functions:   0%|          | 0/19 [00:00<?, ?it/s]Analyzing functions: 100%|██████████| 19/19 [00:00<00:00, 16223.90it/s]
+Analyzing call graphs:   0%|          | 0/19 [00:00<?, ?it/s]Analyzing call graphs: 100%|██████████| 19/19 [00:00<00:00, 38002.75it/s]
+Parsing files:   0%|          | 0/19 [00:00<?, ?it/s]Parsing files: 100%|██████████| 19/19 [00:00<00:00, 94533.54it/s]
+2026-07-20 20:52:59,614 - INFO - Start data-flow bug scanning in parallel...
+2026-07-20 20:52:59,614 - INFO - Max number of workers: 30
+Processing Source Values:   0%|          | 0/5 [00:00<?, ?src/s]2026-07-20 20:52:59,614 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:52:59,614 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:52:59,615 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:52:59,616 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:52:59,616 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:02,214 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:02,604 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:02,746 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:03,002 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:05,712 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:06,997 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:07,231 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:07,280 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:08,650 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:10,504 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:10,968 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:11,300 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:12,239 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+2026-07-20 20:53:12,239 - INFO - The LLM Tool PathValidator is invoked.
+2026-07-20 20:53:12,605 - INFO - The LLM Tool PathValidator is invoked.
+2026-07-20 20:53:14,677 - INFO - The LLM Tool PathValidator is invoked.
+2026-07-20 20:53:14,690 - INFO - The LLM Tool PathValidator is invoked.
+2026-07-20 20:53:14,763 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+Processing Source Values:  20%|██        | 1/5 [00:15<01:03, 15.85s/src]2026-07-20 20:53:16,135 - INFO - The LLM Tool IntraDataFlowAnalyzer is invoked.
+Processing Source Values:  40%|████      | 2/5 [00:16<00:21,  7.02s/src]2026-07-20 20:53:19,562 - INFO - The LLM Tool PathValidator is invoked.
+2026-07-20 20:53:20,339 - INFO - The LLM Tool PathValidator is invoked.
+Processing Source Values:  80%|████████  | 4/5 [00:22<00:04,  4.38s/src]Processing Source Values: 100%|██████████| 5/5 [00:22<00:00,  3.13s/src]Processing Source Values: 100%|██████████| 5/5 [00:22<00:00,  4.53s/src]
+2026-07-20 20:53:22,276 - INFO - 5 bug(s) was/were detected in total.
+2026-07-20 20:53:22,277 - INFO - The bug report(s) has/have been dumped to /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/result/dfbscan/gpt-4.1/NPD/Python/toy/2026-07-20-20-52-59-0/detect_info.json
+2026-07-20 20:53:22,277 - INFO - The log files are as follows:
+2026-07-20 20:53:22,277 - INFO - /Users/guylupo/Library/CloudStorage/GoogleDrive-guy@stormtree.biz/My Drive/Dev/taip-repoaudit-posture/repoaudit/log/dfbscan/gpt-4.1/NPD/Python/toy/2026-07-20-20-52-59-0/dfbscan.log

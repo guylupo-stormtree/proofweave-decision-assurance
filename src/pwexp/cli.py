@@ -105,6 +105,20 @@ def cmd_paper_tex(a) -> int:
     return 0
 
 
+def cmd_import_iceccs(a) -> int:
+    from pathlib import Path
+    from .importers import iceccs
+    try:
+        c = iceccs.import_cycle(Path(a.dataset), a.runs)
+    except (iceccs.ImportError_, OSError) as e:
+        _p(f"{FAIL} {e}")
+        return 1
+    o = c.data["stages"]["1"]["outcome"]
+    _p(f"{OK} imported {o['repoaudit_runs']} runs as {c.id} (pilot, fixture only) · GREEN {o['repoaudit_green']}"
+       f" · Stage 2 unlocked")
+    return 0
+
+
 def cmd_pending(a) -> int:
     _p(f"'{a.cmd}' becomes available in a later build phase (see docs/BUILD.md).")
     return 2
@@ -127,6 +141,10 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--lock")
     t.add_argument("--check", action="store_true")
     t.set_defaults(fn=cmd_paper_tex)
+    im = sub.add_parser("import-iceccs", help="import first-study RepoAudit runs as a fixture pilot cycle")
+    im.add_argument("dataset", help="path to datasets/live-v1/python_npd")
+    im.add_argument("--runs", nargs="+", required=True, help="e.g. gpt-4.1/run25 gpt-4o-mini/run01")
+    im.set_defaults(fn=cmd_import_iceccs)
     for name in ("verify", "replay", "ui"):
         s = sub.add_parser(name)
         s.add_argument("--published", action="store_true")
