@@ -20,3 +20,23 @@ uv venv --python 3.13 .venv && VIRTUAL_ENV=$PWD/.venv uv pip install -e '.[dev]'
 .venv/bin/pwexp protocol check
 PWEXP_DEV=1 …   # enables the dev-only "local" OpenAI-compatible provider (never in a campaign)
 ```
+
+## P2 work plan: ProofWeave core + Stages 2–3
+
+| Module | Responsibility | Timing mark |
+|---|---|---|
+| `proofweave/envelope.py` | Evidence envelope (id, producer, run, repo, commit, config χ, collection policy, eventType, sourceRef, payloadHash, time, completion, ledgerRef) | — |
+| `proofweave/adapters/repoaudit.py` | Native bundle → verdict record + analysis units (A) + validated chains (V), each with `sourceRef` = (native file sha256, byte span of the log entry) | inside Bind |
+| `proofweave/adapters/semgrep.py` | Semgrep JSON → completion + rule/finding records with source refs | inside Bind |
+| `proofweave/ingress.py` | Receives a bundle, stamps t0 (monotonic `perf_counter_ns`), drives Bind → Ledger → Weaver → probe, stamps t1–t4 | t0 |
+| `proofweave/bind.py` | Schema validation, privacy treatment (absolute paths → repository-relative), context binding | t1 |
+| `proofweave/ledger.py` | Append-only JSONL hash chain; one batch per bundle; declared fsync policy; content-addressed native blobs | t2 |
+| `proofweave/graph.py` | `GraphStore` interface + in-memory store; Graph Weaver consumes records after its watermark; entity resolution of log text against a Python `ast` parse of the target snapshot (independent of RepoAudit); JSON checkpoint | t3 |
+| `proofweave/query.py` | Witness queries; registered readiness probe at the committed watermark | t4 |
+| `proofweave/export_dot.py` | Graphviz `.dot` export (full graph + per-decision views) | after timing |
+| `stages/stage2_timing.py` | Replay sealed Stage 1 bundles into a reset plane per repetition; record t0–t4 and Δ_ready vs 5 s; seal ledger + graph as corpus E | — |
+| `stages/stage3_scale.py` | Marked, segregated synthetic expansion to 10 / 100 / 1,000 / 10,000 records; repeated measurements; crossing point | — |
+
+Tests: adapter on real native logs (source refs resolve to the exact bytes); ledger tamper and deletion detection; graph rebuilt from ledger alone is identical; components sum to t4 − t0; synthetic records never mixed into the authentic corpus; replay of Stage 2 gives identical corpus E hash.
+
+Development evidence: a keyless dev pilot on `fixture-guarded-users` (local model, `PWEXP_DEV=1`) gives realistic analysis units and validated chains for the tests. It is a fixture, never a result.
