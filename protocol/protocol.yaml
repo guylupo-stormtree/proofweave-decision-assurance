@@ -1,0 +1,43 @@
+# ProofWeave Decision Gateway experiment: protocol declarations.
+# Every value must be set before `pwexp protocol lock`. "TODO" marks an open decision.
+# API keys NEVER go here: they are entered per run and kept in memory only (DR-20).
+protocol_version: 1
+
+target:
+  repository: TODO-target-repo-url          # open decision: target repository
+  commit: TODO-commit-sha
+  language: Python                          # RepoAudit 160f5bc: NPD for Python/Java/Go; NPD/MLK/UAF for C/C++
+  bug_type: NPD
+  snapshot_path: targets/TODO-snapshot      # immutable copy of the target at `commit`
+
+required_set:                               # independent of RepoAudit output; reviewed by a person
+  path: protocol/required-set.json          # mixed granularity: A-level (analysed) and V-level (validated) items
+  review_record: protocol/required-set-review.md
+
+green_mapping: DR-11                        # complete + zero accepted findings (docs/REQUIREMENTS.md)
+
+divergence:
+  tau: TODO                                 # 0 < tau < 1, fixed before any campaign cycle
+  signature: A+V                            # analysis units + validated chains from dfbscan.log
+
+acquisition:
+  repoaudit_runs_per_model: TODO            # N
+  semgrep_runs: TODO                        # M
+  temperature: 0.0                          # RepoAudit run script default
+  call_depth: 3
+  workers: 4
+  timeout_s: 3600
+  models:                                   # campaign model list; a cycle with other models runs as pilot (DR-20)
+    - {provider: TODO, model: TODO}
+
+semgrep:
+  version: TODO                             # Semgrep CE, pinned
+  ruleset: TODO                             # ruleset id or path, pinned
+
+timing:
+  reference_threshold_s: 5                  # B_ref (the paper's \PWBudget), evidence readiness only (RQ2)
+  repetitions: TODO
+  volumes: [10, 100, 1000, 10000]
+  durability: fsync-per-bundle
+
+selection_rule: first-complete-campaign-cycle   # declared before any campaign cycle runs

@@ -1,0 +1,44 @@
+# Deterministic comparator rules for Python NPD (pinned in the repository; no registry fetch).
+# Semgrep is a complementary evidence source, not an oracle for RepoAudit (main.tex §5.1).
+rules:
+  - id: pw-none-attribute-access
+    languages: [python]
+    severity: WARNING
+    message: Attribute access on a value that was assigned None on this path
+    patterns:
+      - pattern: |
+          $X = None
+          ...
+          $X.$ATTR
+      - pattern-not-inside: |
+          if $X is not None:
+              ...
+  - id: pw-none-returning-call-dereferenced
+    languages: [python]
+    severity: WARNING
+    message: Result of a call that can return None is dereferenced without a None check
+    patterns:
+      - pattern: |
+          $V = $F(...)
+          ...
+          $V.$ATTR
+      - pattern-not: |
+          $V = $F(...)
+          ...
+          if $V is None:
+              ...
+          ...
+          $V.$ATTR
+      - pattern-not: |
+          $V = $F(...)
+          ...
+          if not $V:
+              ...
+          ...
+          $V.$ATTR
+      - pattern-not-inside: |
+          if $V is not None:
+              ...
+      - metavariable-regex:
+          metavariable: $F
+          regex: ^(find_|get_|resolve_|lookup_|load_)

@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv*/
+*.egg-info/
+.pytest_cache/
+# reviewer/maintainer local cycles are never committed; only records/published/ is (maintainer)
+records/cycles/
+records/tmp/
+# secrets: never commit (keys are memory-only by design, DR-20)
+*.env
+.env*

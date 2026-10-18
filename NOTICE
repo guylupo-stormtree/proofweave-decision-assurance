@@ -1,0 +1,16 @@
+This repository references third-party software that keeps its own licence.
+
+RepoAudit
+  https://github.com/PurCL/RepoAudit
+  Included as an unmodified git submodule at vendor/RepoAudit, pinned to commit
+  160f5bcd378a02a2417e32e999f93ef5fa0f5e64. It is licensed by Purdue University under
+  its own (non-commercial) licence; see vendor/RepoAudit/LICENSE. It is not vendored,
+  modified or relicensed by this repository. The experiment reaches RepoAudit's model
+  calls through the OpenAI SDK's OPENAI_BASE_URL setting; no RepoAudit source is changed.
+
+Semgrep Community Edition
+  https://github.com/semgrep/semgrep
+  Installed from PyPI into a separate environment at the version pinned in
+  protocol/protocol.yaml. Licensed under LGPL-2.1.
+
+The licence of this repository's own code is to be decided before publication (decision B2).

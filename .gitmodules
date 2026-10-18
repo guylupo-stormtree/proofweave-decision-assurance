@@ -1,0 +1,4 @@
+[submodule "vendor/RepoAudit"]
+	path = vendor/RepoAudit
+	url = https://github.com/PurCL/RepoAudit.git
+	ignore = untracked
