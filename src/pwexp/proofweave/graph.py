@@ -6,10 +6,17 @@ text to code using our own parse of the target snapshot (Python `ast`), independ
 anything that does not resolve is kept and marked unresolved, and cannot count as coverage.
 
 Node kinds: run, verdict, function, value, unit (analysis unit), chain (validation request),
-            answer (validation answer), finding
+            answer (validation answer), finding, callsite
 Edge kinds: run-observed->unit, unit-about->function, run-reached->value, run-validated->chain,
             chain-step->value (attr i), value-in->function, run-answered->answer,
-            run-reported->finding, finding-at->value, finding-involves->function, run-verdict->verdict
+            run-reported->finding, finding-at->value, finding-involves->function, run-verdict->verdict,
+            unit-entered_from->function (the None arrived as that callee's return value),
+            run-passed->callsite (the analyser said the None is passed as an argument at that call)
+
+Pathways. RepoAudit follows a None one function at a time. How each analysis unit was reached is read
+from the unit's own source expression, parsed with `ast`: the literal None is a source; a call to f means
+the None was returned by f into this function; a parameter means it was passed in as an argument. The
+caller of an argument step is the function whose flow fact names an argument at a call site of this one.
 """
 from __future__ import annotations
 
@@ -23,6 +30,26 @@ from ..hashing import sha256_json
 
 
 # ----------------------------------------------------------------------------- target index
+def call_name(node: ast.AST) -> str | None:
+    f = getattr(node, "func", None)
+    return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+
+
+def entry_of(source: str | None) -> tuple[str, str | None]:
+    """How an analysis unit was reached, from its source expression: (source|return|name|unknown, detail)."""
+    try:
+        e = ast.parse((source or "").strip().strip("`"), mode="eval").body
+    except SyntaxError:
+        return "unknown", None
+    if isinstance(e, ast.Constant) and e.value is None:
+        return "source", None
+    if isinstance(e, ast.Call):
+        return "return", call_name(e)
+    if isinstance(e, ast.Name):
+        return "name", e.id
+    return "unknown", None
+
+
 @dataclass(frozen=True)
 class Function:
     file: str
@@ -38,15 +65,18 @@ class Function:
 class TargetIndex:
     """Functions of a Python target snapshot, from our own `ast` parse."""
 
-    def __init__(self, functions: Iterable[Function] = ()):
+    def __init__(self, functions: Iterable[Function] = (), calls: dict[tuple[str, int], set[str]] | None = None,
+                 params: dict[str, list[str]] | None = None):
         self.functions = sorted(functions, key=lambda f: (f.file, f.start, f.name))
         self._by_name: dict[str, list[Function]] = {}
         for f in self.functions:
             self._by_name.setdefault(f.name, []).append(f)
+        self.calls = calls or {}    # (file, line) -> names of the functions called on that line
+        self.params = params or {}  # function node id -> parameter names
 
     @classmethod
     def from_snapshot(cls, root: Path | None) -> "TargetIndex":
-        fns = []
+        fns, calls, params = [], {}, {}
         if root and Path(root).is_dir():
             for p in sorted(Path(root).rglob("*.py")):
                 rel = p.relative_to(root).as_posix()
@@ -56,8 +86,16 @@ class TargetIndex:
                     continue
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        fns.append(Function(rel, node.name, node.lineno, getattr(node, "end_lineno", node.lineno)))
-        return cls(fns)
+                        f = Function(rel, node.name, node.lineno, getattr(node, "end_lineno", node.lineno))
+                        fns.append(f)
+                        a = node.args
+                        params[f.node_id] = [x.arg for x in a.posonlyargs + a.args + a.kwonlyargs]
+                    elif isinstance(node, ast.Call):
+                        name = call_name(node)
+                        if name:
+                            for line in range(node.lineno, (node.end_lineno or node.lineno) + 1):
+                                calls.setdefault((rel, line), set()).add(name)
+        return cls(fns, calls, params)
 
     def by_name(self, name: str | None) -> list[Function]:
         return self._by_name.get(name or "", [])
@@ -187,13 +225,31 @@ class Weaver:
                 self.store.add_node(verdict, "verdict", {}, ref)
                 self.store.add_edge(run, verdict, "verdict", {}, ref)
             elif et == "repoaudit.analysis_unit":
+                fn = self._fn_by_name(p.get("function"), ref)
+                kind, detail = entry_of(p.get("source"))
+                if kind == "name":
+                    kind = "parameter" if detail in self.index.params.get(fn, []) else "unknown"
                 self.store.add_node(node, "unit", {"function": p.get("function"), "source": p.get("source"),
-                                                   "line": p.get("line")}, ref)
+                                                   "line": p.get("line"), "entry": kind}, ref)
                 self.store.add_edge(run, node, "observed", {}, ref)
-                self.store.add_edge(node, self._fn_by_name(p.get("function"), ref), "about", {}, ref)
+                self.store.add_edge(node, fn, "about", {}, ref)
+                if kind == "return" and len(self.index.by_name(detail)) == 1:
+                    self.store.add_edge(node, self._fn_by_name(detail, ref), "entered_from", {}, ref)
             elif et == "repoaudit.flow_fact":
                 for v in p.get("values", []):
                     self.store.add_edge(run, self._value(v, ref), "reached", {"label": v.get("label")}, ref)
+                    if v.get("label") != "ARG":
+                        continue
+                    caller = self.index.enclosing(v.get("file") or "", int(v.get("line") or -1))
+                    for name in sorted(self.index.calls.get((v.get("file") or "", int(v.get("line") or -1)), ())):
+                        if not caller or len(self.index.by_name(name)) != 1:
+                            continue
+                        callee = self._fn_by_name(name, ref)
+                        if callee != caller.node_id:
+                            cs = f"callsite:{v.get('file')}:{v.get('line')}:{name}"
+                            self.store.add_node(cs, "callsite", {"from": caller.node_id, "to": callee,
+                                                                 "file": v.get("file"), "line": v.get("line")}, ref)
+                            self.store.add_edge(run, cs, "passed", {}, ref)
             elif et == "repoaudit.validation_request":
                 self.store.add_node(node, "chain", {"length": len(p.get("chain", []))}, ref)
                 self.store.add_edge(run, node, "validated", {}, ref)

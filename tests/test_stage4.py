@@ -43,17 +43,20 @@ def _dev_cycle():
     return _through_stage3(devfixture.import_cycle(DEV, RUNS, semgrep=["semgrep/run001"]))
 
 
-def test_natural_three_greens_hold(root):
+def test_dev_fixture_views(root):
     c = _dev_cycle()
     assert s4.run(c, required_path=DEV / "required-set.json", progress=QUIET)
     o = c.data["stages"]["4"]["outcome"]
     assert all(c.data["stages"]["4"]["checks"].values()) and c.data["status"] == "complete"
-    p5 = o["views"]["P5"]
-    assert p5["verdict_only"] == "PROCEED" and p5["observed"] == "INCONCLUSIVE" and p5["action"] == "HOLD"
-    assert p5["agree"] and p5["missing"]
+    p2, p3, p5 = o["views"]["P2"], o["views"]["P3"], o["views"]["P5"]
+    # one GREEN run (alone, or with GREEN Semgrep) leaves flows unfollowed: verdict-only PROCEED, TAIP HOLD
+    assert p3["verdict_only"] == "PROCEED" and p3["observed"] == "INCONCLUSIVE" and p3["action"] == "HOLD"
+    assert {"R12", "R13"} <= set(p2["missing"]) and p3["missing"] == ["R12", "R13"]
+    # the divergent pair complements each other and, with Semgrep, covers the whole required set
+    assert p5["observed"] == "PASS" and p5["action"] == "PROCEED" and p5["agree"]
     n, d = map(int, o["oracle_agreement"].split("/"))
-    assert n == d > 0 and o["unsupported_proceed"] == 0 and o["replay_agreement"] == "11/11"
-    assert not o["views"]["P6"]["attainable"]          # P5 already insufficient: no withholding needed
+    assert n == d > 0 and o["unsupported_proceed"] == 0 and o["avoidable_hold"] == 0 and o["replay_agreement"] == "11/11"
+    assert o["views"]["P6"]["attainable"] and o["views"]["P6"]["observed"] == "INCONCLUSIVE"   # withholding flips it
     assert (c.path / "stage4" / "attempt1" / "views" / "P5.dot").exists()
 
 

@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- Pathways: the Graph Weaver records how each RepoAudit analysis step was reached (from a None source, as a callee's return value, or as an argument) and `QueryAPI.pathway(run)` returns each run's followed steps with their ledger records. A flow requirement is covered when the run followed the None along it, or a validated chain passes through it; witnesses carry `via`. The independent oracle applies the same rule with its own parsing. Pathway divergence (DR-22) leads the report: a pathway × run table and a pairwise similarity for same-model, other-temperature and different-model pairs.
+- Report wording: missing-flow explanations now state that the run never carried the None into the receiving function; the contrast excerpt is RepoAudit's own prompt for that step.
+- On the development fixture the declared pair now covers every flow between them (P5 PASS), while each single GREEN run leaves flows unfollowed (P2 and P3 HOLD).
 - P4 reporting: `pwexp report --cycle ID` writes `RESULTS.md`, `EXHIBIT.html` (self-contained, for presenting), `timing.csv`, `assurance.csv`, `results.json` (every value with its source) and the paper LaTeX into the cycle's `report/` folder. Pilot output is stamped PILOT DATA.
 - Worked-example exhibit: the Three-GREENs view with each run's model and settings, verdict-only vs ProofWeave + TAIP vs oracle, an item × run coverage matrix, and a contrast for one requirement that one run covered and another (for example another model) did not, showing RepoAudit's own log excerpt by byte span. `--item` and `--runs` choose what to show; the default follows a declared rule.
 - `pwexp publish` (maintainer): publishes only the complete campaign cycle chosen by the protocol's selection rule, once, with a hash-chained publication record listing every campaign cycle; `--preview` rehearses publication for any complete cycle without recording it.

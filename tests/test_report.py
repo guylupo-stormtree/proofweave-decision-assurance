@@ -44,18 +44,48 @@ def test_exhibit_shows_three_greens_and_a_real_contrast(root):
     c = _complete(devfixture.import_cycle(DEV, RUNS, semgrep=["semgrep/run001"]), DEV / "required-set.json")
     ex = exhibit.build(c)
     case = ex["case"]
-    assert case["view"] == "P5" and case["verdict_only"] == "PROCEED" and case["gateway"] == "HOLD"
-    assert len(case["runs"]) == 3 and all(r["green"] for r in case["runs"])
-    assert case["oracle_agrees"] and case["missing"]
+    # the declared pair complements each other: together they cover every flow, neither does alone
+    assert case["view"] == "P5" and case["verdict_only"] == "PROCEED" and case["gateway"] == "PROCEED"
+    assert len(case["runs"]) == 3 and all(r["green"] for r in case["runs"]) and case["oracle_agrees"]
     con = ex["contrast"]
-    assert con and con["item"] in case["missing"]
-    assert con["covering_run"] not in [r["run"] for r in case["runs"]]   # coverage came from outside the case
-    assert con["missing_run"] in [r["run"] for r in case["runs"]]
+    assert con and con["kind"] == "V"
+    assert {con["covering_run"], con["missing_run"]} <= {r["run"] for r in case["runs"]}
     x = con["excerpt"]
     assert x and x["ledger_record"] and "bytes" in x["location"] and x["text"].strip()
+    assert x["event_type"] == "repoaudit.analysis_unit" and "def " in x["text"]   # the receiving function's step
     assert "/home/" not in x["text"] and "/Users/" not in x["text"]       # privacy-treated
+    n = ex["narrative"]
+    assert {g["term"] for g in ex["glossary"]} >= {"RepoAudit run", "Model (model slot)", "GREEN", "Flow"}
+    assert [r["run"] for r in n["runs"]] == ex["columns"] and all(r["text"] and r["role"] for r in n["runs"])
+    assert "same model and settings" in con["story"]
     row = next(m for m in ex["matrix"] if m["id"] == con["item"])
     assert row["cells"][con["covering_run"]] > 0 and row["cells"][con["missing_run"]] == 0
+
+
+def test_pathways_diverge_between_green_runs(root):
+    """DR-22: same code, same bug type, same model and settings, all GREEN, different pathways."""
+    c = _complete(devfixture.import_cycle(DEV, RUNS, semgrep=["semgrep/run001"]), DEV / "required-set.json")
+    pw = exhibit.build(c)["pathways"]
+    cells = {(r["from"].split("::")[-1], r["to"].split("::")[-1]): r["cells"] for r in pw["rows"]}
+    assert cells[("find_user", "display_name")]["gpt-pw-m1/run001"] and not cells[("find_user", "display_name")]["gpt-pw-m1/run003"]
+    assert cells[("resolve_manager", "escalation_chain")]["gpt-pw-m1/run003"] \
+        and not cells[("resolve_manager", "escalation_chain")]["gpt-pw-m1/run001"]
+    assert any(r["via"] == "argument" for r in pw["rows"])                # None passed as an argument is followed too
+    same = [p for p in pw["pairs"] if p["relation"] == "same model, same settings" and p["both_green"]]
+    assert same and min(p["similarity"] for p in same) < 0.5
+    assert "share only" in pw["summary"]
+
+
+def test_single_green_run_with_semgrep_holds(root):
+    """Two GREENs that leave flows unexamined: verdict-only PROCEED, TAIP HOLD, explained in words."""
+    c = _complete(devfixture.import_cycle(DEV, RUNS, semgrep=["semgrep/run001"]), DEV / "required-set.json")
+    ex = exhibit.build(c, runs=["gpt-pw-m1/run003", "semgrep/run001"])
+    case = ex["case"]
+    assert case["verdict_only"] == "PROCEED" and case["taip"] == "INCONCLUSIVE" and case["gateway"] == "HOLD"
+    assert case["oracle_agrees"] and {"R09", "R10", "R11"} <= set(case["missing"])
+    m = {x["id"]: x["explanation"] for x in ex["narrative"]["missing"]}
+    assert "never followed it into display_name()" in m["R09"]
+    assert ex["contrast"]["missing_run"] == "gpt-pw-m1/run003"
 
 
 def test_results_write_produces_presentable_outputs(root):
@@ -68,7 +98,11 @@ def test_results_write_produces_presentable_outputs(root):
     html = (out / "EXHIBIT.html").read_text()
     md = (out / "RESULTS.md").read_text()
     con = json.loads((out / "exhibit.json").read_text())["contrast"]
-    assert con["item"] in html and con["item"] in md and "HOLD" in html
+    assert con["item"] in html and con["item"] in md and "PROCEED" in html
+    assert "<details class=\"gl\">" in html and "Glossary" in md                    # collapsible glossary on top
+    assert html.index("Glossary") < html.index("In short") < html.index("different pathways") \
+        < html.index("Each run, in plain words") < html.index("What each run actually examined")
+    assert "different pathways" in md
     for m in json.loads((out / "results.json").read_text())["macros"].values():
         assert "source" in m                                              # every number traceable
 
@@ -79,6 +113,9 @@ def test_operator_chosen_item_and_runs(root):
     other = next(m["id"] for m in default["matrix"] if m["id"] != default["contrast"]["item"])
     ex = exhibit.build(c, item_id=other, runs=default["columns"][:2])
     assert ex["contrast"]["item"] == other and [r["run"] for r in ex["case"]["runs"]] == default["columns"][:2]
+    # a presenter's selection is decided afresh, never shown with P5's decision
+    assert ex["case"]["view"] == "presenter's choice" and ex["case"]["oracle_agrees"]
+    assert "R15" in ex["case"]["missing"]                                   # two RepoAudit runs: no Semgrep scan
 
 
 @pytest.mark.skipif(not TOY.is_dir(), reason="RepoAudit submodule not initialised")
@@ -96,7 +133,7 @@ def test_model_versus_model_on_first_study_runs(root, tmp_path):
     con = ex["contrast"]
     assert con and con["item"] == "R99" and con["kind"] == "V"
     assert models[con["covering_run"]] == "gpt-4.1" and models[con["missing_run"]] == "gpt-4o-mini"       # one model saw it, the other did not
-    assert con["excerpt"]["text"].strip()
+    assert con["excerpt"]["text"].strip() and "Two different models" in con["story"]
     # the presenter may also fix the comparison explicitly
     pair = exhibit.build(c, item_id=con["item"], runs=[con["missing_run"]])
     assert pair["contrast"]["missing_run"] == con["missing_run"] and pair["contrast"]["covering_run"] == con["covering_run"]

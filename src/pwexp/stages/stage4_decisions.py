@@ -146,7 +146,7 @@ def run(cycle: Cycle, required_path: Path | None = None, tau: float | None = Non
         (out / "views" / f"{v.id}.json").write_text(json.dumps({**d, "verdict_only": vo, "oracle": o},
                                                                indent=2, sort_keys=True) + "\n")
     p5 = rows["P5"]
-    three = (f"{p5['verdict_only']} on verdicts alone; TAIP {p5['observed']} → {p5['action']}; missing {', '.join(p5['missing'] or [])}"
+    three = (f"{p5['verdict_only']} on verdicts alone; TAIP {p5['observed']} → {p5['action']}; missing {', '.join(p5['missing'] or []) or 'none'}"
              if p5["attainable"] else "unattained (no qualifying divergent pair or no GREEN Semgrep run)")
     all_refs = {r for d in decisions.values() for ob in d.get("obligations", []) for w in ob["witnesses"] for r in w["refs"]}
     checks = {
