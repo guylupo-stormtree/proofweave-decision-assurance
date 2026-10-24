@@ -1,0 +1,12 @@
+{
+  "id": "M_h",
+  "about": "DEVELOPMENT manifest: functions of targets/fixture-guarded-users that can receive a None from another function (callers of None-returning functions). Not an independent review.",
+  "functions": [
+    "directory.py::display_name",
+    "directory.py::load_profile",
+    "directory.py::resolve_manager",
+    "directory.py::manager_email",
+    "report.py::login_summary",
+    "report.py::escalation_chain"
+  ]
+}

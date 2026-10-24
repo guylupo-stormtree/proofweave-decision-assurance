@@ -1,0 +1,44 @@
+# DEVELOPMENT decision protocol (DR-23) over tests/fixtures/dev-guarded-users. Fixture only, never a result.
+# Paths are relative to this file's directory.
+protocol_version: 1
+target:
+  repository: fixture-guarded-users
+  commit: fixture
+  language: Python
+  bug_type: NPD
+  snapshot_path: ../../../../targets/fixture-guarded-users
+green_mapping: DR-11
+acquisition:
+  temperature: 0.0
+  call_depth: 3
+  workers: 4
+  timeout_s: 3600
+  models:
+    - {provider: openai, model: development-placeholder}
+semgrep:
+  version: 1.181.0
+  ruleset: ../../../../protocol/semgrep-rules/python-none-deref.yaml
+timing:
+  reference_threshold_s: 5
+  repetitions: 1
+  volumes: [10]
+  durability: fsync-per-bundle
+manifests:
+  M_h: {file: manifests/M_h.json}
+policies:
+  P1@1: {file: policies/P1@1.json}
+  P1s@1: {file: policies/P1s@1.json}
+  P2@1: {file: policies/P2@1.json}
+decisions:
+  seed: 20261024
+  intent:
+    action: release
+    repo: fixture-guarded-users
+    commit: fixture
+    bug_type: NPD
+    scope: manifests/M_h.json
+    requested_by: development
+  groups:
+    - {group: G-main, control: repoaudit, basis: [repoaudit], policy: P1@1, rule: DR-11, count: 3}
+    - {group: G-strict, control: repoaudit, basis: [repoaudit], policy: P1s@1, rule: DR-11, count: 1}
+    - {group: G-pipe, control: audit-pipeline, basis: [repoaudit, semgrep], policy: P2@1, rule: all-green, count: 1}

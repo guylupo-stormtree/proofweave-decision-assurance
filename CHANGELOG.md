@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+
+## pw-v0.2.0
+- Opt-in decision binding (DR-23): decision bundles written by Stage 1 under a decision protocol; `EvidencePlane.ingest_decision`; event types `proofweave.intent`, `proofweave.policy`, `proofweave.decision`, `proofweave.decision_binding`; decision, intent and policy graph nodes; `QueryAPI.decision`, `basis`, `policy_text` with complete/partial/unavailable status; `.dot` decision views; synthetic decisions for scale planes.
+- Decision protocols: `protocol check` and `protocol lock` accept `decisions:`, `policies:` and `manifests:` and hash the referenced files.
+- Command line: `--protocol` and `--records-root` on every command; `run-stage 1` (keys typed at a masked prompt, memory only); `pwexp setup`; `import-dev --protocol` for development decision bundles.
+- Run manifests record `start_us` so the order of decision context, runs and decision is checkable.
+- Regression guard: with decision binding unused, the development fixtures' ledger head, graph hash and corpus hash equal `pw-v0.1.0` (`tests/fixtures/regression-pw-v0.1.0.json`).
+
+## pw-v0.1.0
 - Pathways: the Graph Weaver records how each RepoAudit analysis step was reached (from a None source, as a callee's return value, or as an argument) and `QueryAPI.pathway(run)` returns each run's followed steps with their ledger records. A flow requirement is covered when the run followed the None along it, or a validated chain passes through it; witnesses carry `via`. The independent oracle applies the same rule with its own parsing. Pathway divergence (DR-22) leads the report: a pathway × run table and a pairwise similarity for same-model, other-temperature and different-model pairs.
 - Report wording: missing-flow explanations now state that the run never carried the None into the receiving function; the contrast excerpt is RepoAudit's own prompt for that step.
 - On the development fixture the declared pair now covers every flow between them (P5 PASS), while each single GREEN run leaves flows unfollowed (P2 and P3 HOLD).

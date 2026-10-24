@@ -1,4 +1,8 @@
-"""Repository and records locations. Override the root with PWEXP_ROOT (tests, reviewers)."""
+"""Repository and records locations. Override the root with PWEXP_ROOT (tests, reviewers).
+
+PWEXP_RECORDS_ROOT moves the records tree (cycles, published set) elsewhere, e.g. a downstream
+experiment's own capture folder (`pwexp run-stage --records-root`). Defaults are unchanged.
+"""
 from __future__ import annotations
 
 import os
@@ -14,7 +18,8 @@ def repo_root() -> Path:
 
 
 def records_dir() -> Path:
-    return repo_root() / "records"
+    env = os.environ.get("PWEXP_RECORDS_ROOT")
+    return Path(env).resolve() if env else repo_root() / "records"
 
 
 def cycles_dir() -> Path:

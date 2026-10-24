@@ -14,6 +14,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..hashing import sha256_file, sha256_json
+from .adapters import decision as dec_adapter
 from .adapters import repoaudit as ra_adapter
 from .adapters import semgrep as sg_adapter
 from .bind import BindContext, bind
@@ -22,13 +24,17 @@ from .ledger import Ledger
 from .query import QueryAPI
 
 
+class DecisionIngestError(ValueError):
+    pass
+
+
 class EvidencePlane:
     def __init__(self, path: Path, index: TargetIndex | None = None, durability: str = "fsync-per-bundle"):
         self.path = Path(path)
         self.ledger = Ledger(self.path, durability)
         self.store = InMemoryGraphStore()
         self.weaver = Weaver(self.store, index or TargetIndex())
-        self.query = QueryAPI(self.store)
+        self.query = QueryAPI(self.store, self.ledger)
         self.weaver.apply(self.ledger.records())  # resume from an existing ledger
 
     def ingest(self, bundle: Path, run: str, ctx_base: dict[str, Any]) -> dict[str, Any]:
@@ -61,6 +67,55 @@ class EvidencePlane:
         t4 = time.perf_counter_ns()
         return {"run": run, "records": len(appended), "ready": ready,
                 "t_ns": {"t1": t1 - t0, "t2": t2 - t0, "t3": t3 - t0, "t4": t4 - t0},
+                "components_ns": {"bind": t1 - t0, "ledger": t2 - t1, "weave": t3 - t2, "query_ready": t4 - t3},
+                "T_ready_ns": t4 - t0, "watermark": self.ledger.head[0]}
+
+    def ingest_decision(self, bundle: Path, ctx_base: dict[str, Any], synthetic: bool = False) -> dict[str, Any]:
+        """Bind one decision to its intent, policy-at-event and basis (DR-23). Ingest it after its basis runs.
+
+        The basis is every ledger record whose run is a planned basis run (authentic records only, unless the
+        decision itself is synthetic). A missing basis run fails the ingest before anything is written.
+        Batch 1 appends the intent, policy and decision records; batch 2, right after, the binding record.
+        """
+        bundle = Path(bundle)
+        t0 = time.perf_counter_ns()
+        b, obs = dec_adapter.parse(bundle)
+        ctx, did = b["context"], b["context"]["decision_id"]
+        planned = set(ctx["basis_runs"])
+        basis = [r for r in self.ledger.records() if r["run"] in planned and (synthetic or not r.get("synthetic"))]
+        missing = sorted(planned - {r["run"] for r in basis})
+        if missing:
+            raise DecisionIngestError(f"{did}: basis run(s) not in the ledger: {', '.join(missing)}")
+        bctx = BindContext(run=dec_adapter.decision_run(did), repo=ctx_base.get("repo", ""),
+                           commit=ctx_base.get("commit", ""), project_root=ctx_base.get("project_root"),
+                           config={"control_id": ctx["control_id"], "control_version": ctx["control_version"]},
+                           collection_policy=ctx_base.get("collection_policy"), completion="complete",
+                           synthetic=synthetic)
+        records = bind(obs, bctx)
+        blobs = [p.read_bytes() for p in sorted(bundle.rglob("*")) if p.is_file()]
+        t1 = time.perf_counter_ns()
+        for data in blobs:
+            self.ledger.put_blob(data)
+        first = self.ledger.append_batch(records)
+        by_type = {r["event_type"]: r for r in first}
+        hashes = sorted(r["record_hash"] for r in basis)
+        payload = {"decision_id": did, "decision_record": by_type["proofweave.decision"]["id"],
+                   "intent_record": by_type["proofweave.intent"]["id"],
+                   "policy_record": by_type["proofweave.policy"]["id"], "policy_digest": ctx["policy_ref"]["sha256"],
+                   "basis_runs": sorted(planned), "basis_record_ids": sorted(r["id"] for r in basis),
+                   "basis_root": sha256_json(hashes), "basis_count": len(basis)}
+        man_sha = sha256_file(bundle / "manifest.json")
+        binding = bind([ra_adapter.Observation("proofweave.decision_binding", payload,
+                                               {"file": "manifest.json", "sha256": man_sha, "pointer": "/files"},
+                                               b["decision"]["decided_at"])], bctx)
+        second = self.ledger.append_batch(binding)
+        t2 = time.perf_counter_ns()
+        self.weaver.apply(first + second)
+        t3 = time.perf_counter_ns()
+        ready = self.query.probe([r["record_hash"] for r in first + second], self.ledger.head[0])
+        t4 = time.perf_counter_ns()
+        return {"run": bctx.run, "kind": "decision", "records": len(first) + len(second), "ready": ready,
+                "basis_count": len(basis), "t_ns": {"t1": t1 - t0, "t2": t2 - t0, "t3": t3 - t0, "t4": t4 - t0},
                 "components_ns": {"bind": t1 - t0, "ledger": t2 - t1, "weave": t3 - t2, "query_ready": t4 - t3},
                 "T_ready_ns": t4 - t0, "watermark": self.ledger.head[0]}
 

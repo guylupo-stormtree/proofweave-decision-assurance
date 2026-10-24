@@ -12,6 +12,9 @@ Edge kinds: run-observed->unit, unit-about->function, run-reached->value, run-va
             run-reported->finding, finding-at->value, finding-involves->function, run-verdict->verdict,
             unit-entered_from->function (the None arrived as that callee's return value),
             run-passed->callsite (the analyser said the None is passed as an argument at that call)
+Decision binding (DR-23, only when decision bundles are ingested): nodes decision:<id>, intent:<id>,
+            policy:<id>@<version> (per decision, unlike the shared verdict nodes); edges decision-for->intent,
+            decision-under->policy, decision-by->run (one per basis run), decision-verdict->verdict
 
 Pathways. RepoAudit follows a None one function at a time. How each analysis unit was reached is read
 from the unit's own source expression, parsed with `ast`: the literal None is a source; a call to f means
@@ -105,7 +108,7 @@ class TargetIndex:
         return min(cands, key=lambda f: f.end - f.start) if cands else None
 
 
-# ----------------------------------------------------------------------------- store
+# ----------------------------------------------------------------------------- store (see below)
 class GraphStore(Protocol):
     watermark: int
 
@@ -189,6 +192,7 @@ class InMemoryGraphStore:
 class Weaver:
     store: InMemoryGraphStore
     index: TargetIndex = field(default_factory=TargetIndex)
+    _decision_nodes: dict[str, str] = field(default_factory=dict)  # ledger record id -> node (decision records)
 
     def _fn_by_name(self, name: str | None, ref: str) -> str:
         cands = self.index.by_name(name)
@@ -216,6 +220,11 @@ class Weaver:
             if r["seq"] <= self.store.watermark:
                 continue
             ref, run, p, et = r["record_hash"], f"run:{r['run']}", r["payload"], r["event_type"]
+            if et.startswith("proofweave."):
+                self._decision(r, ref, p, et)
+                self.store.watermark = r["seq"]
+                n += 1
+                continue
             self.store.add_node(run, "run", {"run": r["run"], "synthetic": bool(r.get("synthetic"))}, ref)
             node = f"{et.split('.')[-1]}:{r['id']}"
             if et == "harness.run_verdict":
@@ -285,3 +294,32 @@ class Weaver:
             self.store.watermark = r["seq"]
             n += 1
         return n
+
+    def _decision(self, r: dict[str, Any], ref: str, p: dict[str, Any], et: str) -> None:
+        syn = bool(r.get("synthetic"))
+        if et == "proofweave.intent":
+            nid = f"intent:{p.get('intent_id')}"
+            self.store.add_node(nid, "intent", {k: p.get(k) for k in ("intent_id", "action", "repo", "commit", "bug_type")}
+                                | {"synthetic": syn}, ref)
+        elif et == "proofweave.policy":
+            nid = f"policy:{p.get('id')}@{p.get('version')}"
+            self.store.add_node(nid, "policy", {"id": p.get("id"), "version": p.get("version"), "sha256": p.get("sha256")}, ref)
+        elif et == "proofweave.decision":
+            nid = f"decision:{p.get('decision_id')}"
+            self.store.add_node(nid, "decision", {"decision_id": p.get("decision_id"), "verdict": p.get("verdict"),
+                                                  "control_id": p.get("control_id"), "decision_rule": p.get("decision_rule"),
+                                                  "synthetic": syn}, ref)
+            for b in p.get("basis_runs", []):
+                self.store.add_edge(nid, f"run:{b}", "by", {}, ref)
+            verdict = "verdict:GREEN" if p.get("verdict") == "green" else "verdict:NOT_GREEN"
+            self.store.add_node(verdict, "verdict", {}, ref)
+            self.store.add_edge(nid, verdict, "verdict", {}, ref)
+        else:  # proofweave.decision_binding
+            nid = f"decision:{p.get('decision_id')}"
+            self.store.add_node(nid, "decision", {"binding_record": r["id"], "basis_root": p.get("basis_root"),
+                                                  "basis_count": p.get("basis_count")}, ref)
+            for key, kind in (("intent_record", "for"), ("policy_record", "under")):
+                target = self._decision_nodes.get(p.get(key))
+                if target:
+                    self.store.add_edge(nid, target, kind, {}, ref)
+        self._decision_nodes[r["id"]] = nid

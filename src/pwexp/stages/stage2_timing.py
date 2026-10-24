@@ -7,6 +7,10 @@ Exceeding the threshold is a reported outcome, not a stage failure.
 
 The first repetition's plane, built from authentic evidence only, is sealed as corpus E (ledger,
 native blobs, graph checkpoint, .dot export). Stage 4 evaluates every decision over corpus E.
+
+Decision bundles (DR-23, opt-in), if Stage 1 wrote any, are ingested after all run bundles, each bound to
+its intent, policy-at-event and basis; their timings are kept with `kind: decision`. Without decision
+bundles nothing here changes.
 """
 from __future__ import annotations
 
@@ -17,7 +21,8 @@ from typing import Callable
 
 from ..cycles import Cycle
 from ..hashing import manifest_hash, tree_manifest
-from ..proofweave.export_dot import export
+from ..proofweave import decision_bundle
+from ..proofweave.export_dot import export, export_decision
 from ..proofweave.graph import TargetIndex
 from ..proofweave.ingress import EvidencePlane
 from ..proofweave.ledger import Ledger
@@ -32,6 +37,7 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
     threshold_ns = int(float(params["reference_threshold_s"]) * 1e9)
     s1 = stage1_dir(cycle)
     work = bundles(s1)
+    decs = decision_bundle.bundles(s1)
     if not work:
         raise ValueError("no sealed Stage 1 bundles to replay")
     troot = target_root(s1)
@@ -53,6 +59,14 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
                 sums_ok &= sum(t["components_ns"].values()) == t["T_ready_ns"]
                 obs.append(t)
                 f.write(json.dumps(t, sort_keys=True) + "\n")
+            for k, d in enumerate(decs, 1):
+                t = plane.ingest_decision(d, ctx_base)
+                t.update(repetition=r, bundle=len(work) + k, within_threshold=t["T_ready_ns"] <= threshold_ns,
+                         delta_ready_ns=threshold_ns - t["T_ready_ns"])
+                all_ready &= t["ready"]
+                sums_ok &= sum(t["components_ns"].values()) == t["T_ready_ns"]
+                obs.append(t)
+                f.write(json.dumps(t, sort_keys=True) + "\n")
             hashes.append(plane.store.graph_hash())
             progress(f"repetition {r}/{reps}: {len(work)} bundles · median "
                      f"{summary_ms([o['T_ready_ns'] for o in obs if o['repetition'] == r])['median_ms']} ms")
@@ -66,6 +80,13 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
     rebuild_ok = corpus_plane.rebuild_hash() == graph_hash
     bed = cycle.data["stages"]["1"].get("outputs_manifest_sha256") or "published"
     export(corpus_plane.store, corpus / "graph.dot", f"corpus E · evidence bed {str(bed)[:12]}")  # content-derived
+    statuses = {}
+    if decs:
+        (corpus / "decisions").mkdir()
+        for d in decs:
+            did = d.name
+            statuses[did] = corpus_plane.query.decision(did)["status"]
+            export_decision(corpus_plane.store, corpus / "decisions" / f"{did}.dot", did)
     for r in range(2, reps + 1):  # repetition planes are measurement scratch; keep only their timings
         shutil.rmtree(out / f"rep{r:02d}")
     shutil.rmtree(out / "rep01")  # identical to corpus/, which is the sealed copy
@@ -86,6 +107,9 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
         "corpus E sealed from authentic evidence only": not any('"synthetic": true' in l for l in
                                                                (corpus / "ledger.jsonl").read_text().splitlines()),
     }
+    if decs:
+        checks["every decision bound to its intent, policy and complete basis"] = \
+            bool(statuses) and all(v == "complete" for v in statuses.values())
     outcome = {"bundles": len(work), "repetitions": reps, "observations": len(obs),
                "threshold_s": float(params["reference_threshold_s"]), **summary_ms(t_all),
                "within_threshold": sum(o["within_threshold"] for o in obs), "components": comps,
@@ -94,4 +118,6 @@ def run(cycle: Cycle, repetitions: int | None = None, operator: str = "unknown",
                "unresolved_functions": sorted(n["id"] for n in corpus_plane.store.nodes().values()
                                               if n["kind"] == "function" and not n["attrs"].get("resolved")),
                "durability": params["durability"], "attempt_dir": out.name}
+    if decs:
+        outcome["decisions"] = statuses
     return cycle.finish(2, checks, corpus_hash, outcome, operator)

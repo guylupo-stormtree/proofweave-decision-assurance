@@ -1,0 +1,15 @@
+{
+  "id": "P1",
+  "manifest": {
+    "file": "manifests/M_h.json",
+    "sha256": "a44b2ec9fb9870eaf9814c35fd4d059841639897a81dde4cffa8765f248f549d"
+  },
+  "threshold": {
+    "denominator": 5,
+    "numerator": 4
+  },
+  "validators": [
+    "base-check"
+  ],
+  "version": 1
+}

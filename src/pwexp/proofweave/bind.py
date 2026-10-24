@@ -26,6 +26,11 @@ EVENT_TYPES = {
     "repoaudit.finding": "repoaudit",
     "semgrep.scan": "semgrep",
     "semgrep.finding": "semgrep",
+    # decision binding (DR-23, opt-in): only present when a decision bundle is ingested
+    "proofweave.intent": "harness",
+    "proofweave.policy": "harness",
+    "proofweave.decision": "harness",
+    "proofweave.decision_binding": "harness",
 }
 
 

@@ -9,6 +9,7 @@ Design: [DESIGN.md](DESIGN.md). This file tracks which parts of the design are b
 | P2 ProofWeave + Stages 2–3 | adapter with source refs, Bind, JSONL ledger, Graph Weaver, Query API, t0–t4 timing, scale workloads, seal 2 | **done**: 48 tests; Stages 2–3 pass on real first-study runs; corpus E reproducible across cycles |
 | P3 Stage 4 | TAIP obligations, posture, gateway, verdict-only rule, views P0–P9/P2w, divergent pair, independent oracle, replay | **done**: 53 tests; natural Three-GREENs HOLD on the dev fixture; PASS, withholding and FAIL paths tested; oracle agreement and replay checked |
 | P4 Reporting + publish | RESULTS.md, tables, `.dot`, generated LaTeX, maintainer publish | **done**: 60 tests; pathways (DR-22); `pwexp report` (RESULTS.md, EXHIBIT.html, CSV tables, results.json with a source for every value, paper LaTeX), worked-example exhibit (three GREENs vs coverage, item × run matrix, model-vs-model contrast with the exact RepoAudit log excerpt), `pwexp publish` (campaign-only, selection-rule guard, publication record; `--preview` for any cycle) |
+| DR-23 Decision binding | decision bundles, binding at ingest, decision queries, decision protocols, CLI options | **done** (`pw-v0.2.0`): 70 tests; regression guard against `pw-v0.1.0` |
 | P5 Terminal UI | Textual TUI: entry menu, cycles, stage buttons, model/key menu, exhibit screen, Question the graph | not started |
 | P6 Run | pilot cycles → protocol lock → campaign → publish | blocked on protocol decisions (`pwexp protocol check`) |
 

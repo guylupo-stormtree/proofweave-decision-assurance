@@ -71,3 +71,17 @@ records/
 ## 7. Reproducing
 
 Requirement IDs used in the code are listed in [REQUIREMENTS.md](REQUIREMENTS.md). See [REPLICATE.md](../REPLICATE.md) once the master set is published. In short: review the committed results without running anything; re-run Stages 2–4 on the published evidence (Python only, no API key); or create your own evidence set with your own API keys.
+
+## Decision binding (opt-in, DR-23)
+
+Downstream experiments can record each control decision as a bound object: the intent, the decision basis, the decision and the policy in force when it was made. The binding is written when the decision is recorded, from inputs sealed before the control ran.
+
+| Step | What happens |
+|---|---|
+| Protocol | `decisions:` lists decision groups (control, basis = one RepoAudit run, or one RepoAudit and one Semgrep run, policy, rule `DR-11` or `all-green`, count) and a seed; `policies:` and `manifests:` name their files, which the protocol lock hashes. |
+| Stage 1 | The schedule is expanded and shuffled with the seed. For each decision: `decisions/<id>/decision_context.json` and the exact policy bytes are written, then the basis runs execute, then `decision.json` (verdict and per-run GREEN) and the bundle manifest. |
+| Stage 2 | After all run bundles, each decision bundle is ingested: intent, policy and decision records, then the binding record. The graph gains `decision`, `intent` and `policy` nodes with `for`, `under`, `by` and `verdict` edges, and a `.dot` decision view per decision. |
+| Query | `decision(id)`, `basis(id, kinds)` and `policy_text(record)` resolve the binding through the ledger and recompute the basis root. |
+
+Commands: `pwexp run-stage 1|2 --protocol FILE --records-root DIR` (defaults unchanged); `pwexp import-dev --protocol FILE` writes development decision bundles over the fixture runs (contexts written after the runs, marked as such; never a result).
+

@@ -1,0 +1,22 @@
+{
+  "_about": "PW-REG-1: corpus identity of the development fixtures at tag pw-v0.1.0 (Stage 2, one repetition). Decision binding must leave these unchanged when unused.",
+  "dev-guarded-users": {
+    "corpus_sha256": "a368bdc5b4894660e31c9d519d9df3314ea3903a148963c56df20392edabc379",
+    "graph_sha256": "834946918d67b4eaf24a6c89b4caaae10dcc4e780674d7e0dce35f5b1d301377",
+    "ledger_head": [
+      178,
+      "6f57a9771b9a09af98b45a2bf12644ab08e2820ccdbf6f81fb3ed7738b550aa1"
+    ],
+    "records": 179
+  },
+  "iceccs-live-v1": {
+    "corpus_sha256": "bcccd2a5e8832e34fe54e59368ed99ba73f8dbaa2a2fe8c0413360cb7b80883b",
+    "graph_sha256": "6d795176d580628f4890f6ea9a78de5bff52c1257c3567076aa21b84452f4ca7",
+    "ledger_head": [
+      268,
+      "d7dac76853bc6ccc0bed216637179e7a1e7475ae590d672e827e4fbe62921f53"
+    ],
+    "records": 269
+  },
+  "tag": "pw-v0.1.0"
+}

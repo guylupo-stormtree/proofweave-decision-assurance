@@ -10,17 +10,77 @@ hashes behind each witness, so every answer is traceable to native bytes. Suppor
         validated chain passes through those functions in that order. Each witness says which (`via`).
   {"kind": "S", "file": "<file>"}                          a Semgrep scan that covered that file
 Unresolved functions never satisfy a requirement. Runs can be restricted (evidence views, Stage 4).
+
+Decision queries (DR-23, need the ledger): `decision(id)`, `basis(id, kinds)` and `policy_text(record)`.
+Each answer carries `status`: complete (binding found, every basis record resolves, and the recomputed
+basis root matches), partial (something referenced is missing or does not match) or unavailable (no
+binding for that decision). Partial and unavailable answers never establish absence.
 """
 from __future__ import annotations
 
 from typing import Any, Iterable
 
+from ..hashing import sha256_json
 from .graph import InMemoryGraphStore
+
+COMPLETE, PARTIAL, UNAVAILABLE = "complete", "partial", "unavailable"
 
 
 class QueryAPI:
-    def __init__(self, store: InMemoryGraphStore):
+    def __init__(self, store: InMemoryGraphStore, ledger: Any = None):
         self.store = store
+        self.ledger = ledger
+        self._index: tuple[Any, dict[str, dict[str, Any]], dict[str, dict[str, Any]]] | None = None
+
+    # ------------------------------------------------------------------ decisions (DR-23)
+    def _records(self) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+        """(record id -> record, decision id -> binding record), rebuilt only when the ledger head moves."""
+        if self.ledger is None:
+            return {}, {}
+        head = self.ledger.head
+        if self._index is None or self._index[0] != head:
+            by_id, bindings = {}, {}
+            for r in self.ledger.records():
+                by_id[r["id"]] = r
+                if r["event_type"] == "proofweave.decision_binding":
+                    bindings[r["payload"]["decision_id"]] = r
+            self._index = (head, by_id, bindings)
+        return self._index[1], self._index[2]
+
+    def decisions(self) -> list[str]:
+        return sorted(self._records()[1])
+
+    def decision(self, decision_id: str) -> dict[str, Any]:
+        by_id, bindings = self._records()
+        b = bindings.get(decision_id)
+        if b is None:
+            return {"status": UNAVAILABLE, "binding": None, "intent": None, "policy": None, "decision": None}
+        p = b["payload"]
+        parts = {k: by_id.get(p[f"{k}_record"]) for k in ("intent", "policy", "decision")}
+        basis = [by_id.get(i) for i in p["basis_record_ids"]]
+        ok = all(parts.values()) and all(basis) and len(basis) == p["basis_count"] and \
+            sha256_json(sorted(r["record_hash"] for r in basis)) == p["basis_root"] and \
+            parts["policy"]["payload"].get("sha256") == p["policy_digest"]
+        return {"status": COMPLETE if ok else PARTIAL, "binding": b, **parts}
+
+    def basis(self, decision_id: str, kinds: Iterable[str] | None = None) -> dict[str, Any]:
+        d = self.decision(decision_id)
+        if d["status"] == UNAVAILABLE:
+            return {"status": UNAVAILABLE, "records": []}
+        by_id, _ = self._records()
+        want = set(kinds) if kinds else None
+        recs = [by_id[i] for i in d["binding"]["payload"]["basis_record_ids"] if i in by_id]
+        return {"status": d["status"], "records": [r for r in recs if want is None or r["event_type"] in want]}
+
+    def policy_text(self, policy_record: str) -> bytes | str:
+        by_id, _ = self._records()
+        r = by_id.get(policy_record)
+        if r is None or r["event_type"] != "proofweave.policy":
+            return UNAVAILABLE
+        try:
+            return self.ledger.blob(r["source_ref"]["sha256"])
+        except OSError:
+            return UNAVAILABLE
 
     def _out(self, src: str, kind: str) -> list[dict[str, Any]]:
         return self.store.out_edges(src, kind)
