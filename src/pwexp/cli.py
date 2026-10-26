@@ -129,15 +129,35 @@ STAGE1_FIELDS = ("target.snapshot_path", "target.language", "target.bug_type", "
                  "acquisition.call_depth", "acquisition.timeout_s", "semgrep.ruleset")
 
 
-def _stage1_models(specs: list[str], base_url: str) -> "RunModels":
+def _stage1_models(specs: list[str], base_url: str, key_stdin: bool = False) -> "RunModels":
+    """Model entries for this run. Keys are typed at a hidden prompt, or read one per line from standard
+    input (--key-stdin, for a calling program that already holds them in memory). Never stored."""
     import getpass
     from .models import RunModels
     models = RunModels()
     for spec in specs:
         provider, _, model = spec.partition(":")
-        key = getpass.getpass(f"  API key for {provider}:{model} (kept in memory for this run only): ")
+        key = sys.stdin.readline().rstrip("\n") if key_stdin else \
+            getpass.getpass(f"  API key for {provider}:{model} (kept in memory for this run only): ")
         models.add("repoaudit", provider, model, key, base_url=base_url if provider == "local" else "")
     return models
+
+
+def cmd_model_check(a) -> int:
+    from .gateway import check_model
+    from .models import ModelEntryError
+    try:
+        models = _stage1_models(a.model, a.base_url, a.key_stdin)
+    except ModelEntryError as e:
+        _p(f"{FAIL} {e}")
+        return 1
+    ok_all = True
+    for e in models.entries():
+        ok, detail = check_model(e)
+        ok_all &= ok
+        _p(f"{OK if ok else FAIL} {detail}")
+    models.clear()
+    return 0 if ok_all else 1
 
 
 def _run_stage1(c, a, prog) -> bool:
@@ -154,7 +174,7 @@ def _run_stage1(c, a, prog) -> bool:
     if not a.model:
         raise ValueError("Stage 1 needs at least one --model provider:model")
     cfg = stage1_acquire.Stage1Config.from_protocol(proto, protocol.base_dir(), seed=a.seed)
-    models = _stage1_models(a.model, a.base_url)
+    models = _stage1_models(a.model, a.base_url, a.key_stdin)
     try:
         return stage1_acquire.run(c, cfg, models, operator=a.operator, progress=prog)
     finally:
@@ -331,6 +351,12 @@ def main(argv: list[str] | None = None) -> int:
     rs.add_argument("--model", action="append", help="Stage 1: provider:model (repeatable); the key is prompted")
     rs.add_argument("--base-url", default="", help="Stage 1: endpoint for the dev-only local provider")
     rs.add_argument("--seed", type=int, help="Stage 1: run-order seed (default: protocol or random, recorded)")
+    rs.add_argument("--key-stdin", action="store_true", help="Stage 1: read the keys from standard input, one per --model")
+    mc = sub.add_parser("model-check", help="check that each provider:model works with its key (one minimal call)")
+    mc.add_argument("--model", action="append", required=True)
+    mc.add_argument("--base-url", default="")
+    mc.add_argument("--key-stdin", action="store_true", help="read the keys from standard input, one per --model")
+    mc.set_defaults(fn=cmd_model_check)
     rs.add_argument("--required", help="required set JSON (pilot cycles; campaign cycles use the locked one)")
     rs.add_argument("--tau", type=float, help="divergence threshold (pilot cycles; campaign uses the lock)")
     rs.add_argument("--cycle", required=True)

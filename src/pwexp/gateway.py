@@ -192,3 +192,22 @@ class ModelGateway:
             "usage": {"prompt_tokens": itok, "completion_tokens": otok, "total_tokens": itok + otok},
         }
         return 200, converted, converted["model"], itok, otok
+
+
+def check_model(entry) -> tuple[bool, str]:
+    """One minimal request to the provider with this entry's key and model: does the pair work? The key is
+    used only for this call and appears in no output (errors are redacted)."""
+    gw = ModelGateway.__new__(ModelGateway)
+    gw.models = None
+    body = {"messages": [{"role": "user", "content": "Reply with the single word OK."}]}
+    if entry.provider == "anthropic":
+        body["max_tokens"] = 5
+    try:
+        status, out, rmodel, _, _ = ModelGateway._forward(gw, entry, body)
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        return False, f"provider unreachable: {type(e).__name__}"
+    if status == 200:
+        return True, f"{entry.provider}:{entry.model} answered (response model {rmodel or 'unreported'})"
+    msg = json.dumps(out.get("error", out))[:300].replace(entry.key, "●●●●") if entry.key else ""
+    return False, f"HTTP {status}: {msg}"
+

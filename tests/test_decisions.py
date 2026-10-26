@@ -236,3 +236,52 @@ def test_cli_records_root_and_protocol(root, tmp_path, capsys, monkeypatch):
     assert (rr / "cycles" / "pilot-0001" / "stage1" / "attempt1" / "decisions" / "G-main-01").is_dir()
     assert main(["run-stage", "2", "--cycle", "pilot-0001", "--records-root", str(rr)]) == 0
     assert "G-pipe-01 complete" in capsys.readouterr().out
+
+
+def test_model_check_reports_without_the_key(monkeypatch):
+    from pwexp import gateway
+    from pwexp.models import RunModels
+    m = RunModels()
+    e = m.add("repoaudit", "openai", "gpt-test", "sk-secret-value-123")
+    monkeypatch.setattr(gateway.ModelGateway, "_post", staticmethod(lambda url, h, b: (200, {"model": "gpt-test-x"})))
+    ok, detail = gateway.check_model(e)
+    assert ok and "gpt-test" in detail and "sk-secret" not in detail
+    monkeypatch.setattr(gateway.ModelGateway, "_post", staticmethod(
+        lambda url, h, b: (401, {"error": {"message": "bad key sk-secret-value-123"}})))
+    ok, detail = gateway.check_model(e)
+    assert not ok and "401" in detail and "sk-secret-value-123" not in detail
+
+
+def test_keys_from_stdin(monkeypatch):
+    import io
+    from pwexp.cli import _stage1_models
+    monkeypatch.setattr("sys.stdin", io.StringIO("sk-one-xxxxxxxx\nsk-two-xxxxxxxx\n"))
+    m = _stage1_models(["openai:a", "anthropic:b"], "", key_stdin=True)
+    assert [e.model for e in m.entries()] == ["a", "b"] and m.entries()[1].key == "sk-two-xxxxxxxx"
+    m.clear()
+
+
+def test_standalone_semgrep_scan_in_a_decision_schedule(root, monkeypatch):
+    from pwexp import cycles
+    from pwexp.models import RunModels
+    calls = []
+    monkeypatch.setattr(s1, "_run_repoaudit", lambda cfg, alias, out, gw, tag: (out.mkdir(parents=True), calls.append(tag),
+        {"run": tag, "control": "repoaudit", "alias": alias, "start_us": db.now_us(), "wall_clock_s": 0, "complete": True,
+         "findings": 0, "green": True, "input_tokens": 0, "output_tokens": 0, "output_sha256": {}})[2])
+    monkeypatch.setattr(s1, "_run_semgrep", lambda cfg, out, tag: (out.mkdir(parents=True), calls.append(tag),
+        {"run": tag, "control": "semgrep", "start_us": db.now_us(), "wall_clock_s": 0, "green": True,
+         "output_sha256": {}})[2])
+    monkeypatch.setattr(s1, "ModelGateway", _FakeGateway)
+    monkeypatch.setattr(s1.setup_env, "subject_state", lambda: {"head": "160f5bc", "pinned": True, "tracked_files_modified": False})
+    proto = protocol.load()
+    proto["decisions"]["groups"] = [{"group": "G-main", "control": "repoaudit", "basis": ["repoaudit"], "policy": "P1@1",
+                                     "rule": "DR-11", "count": 2}]
+    proto["acquisition"]["semgrep_runs"] = 1
+    cfg = s1.Stage1Config.from_protocol(proto, protocol.base_dir())
+    models = RunModels()
+    models.add("repoaudit", "openai", "development-placeholder", "sk-test-not-a-key")
+    c = cycles.create("pilot", None)
+    assert s1.run(c, cfg, models, progress=QUIET)
+    assert calls[-1] == "semgrep/run001" and sum(t.startswith("gpt-pw") for t in calls) == 2
+    plan = json.loads((stage1_dir(c) / "plan.json").read_text())
+    assert not any("semgrep/run001" in d.get("basis_runs", []) for d in plan["decisions"])

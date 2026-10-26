@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## pw-v0.2.1
+- `pwexp model-check --model provider:model [--key-stdin]`: one minimal call per entry to confirm the key and model work; the key appears in no output.
+- `pwexp run-stage 1 --key-stdin`: keys read from standard input, one per `--model`, for a calling program that already holds them in memory (still never stored).
+- Decision schedules also run the protocol's `acquisition.semgrep_runs` standalone Semgrep scans, in no decision's basis.
+
 ## pw-v0.2.0
 - Opt-in decision binding (DR-23): decision bundles written by Stage 1 under a decision protocol; `EvidencePlane.ingest_decision`; event types `proofweave.intent`, `proofweave.policy`, `proofweave.decision`, `proofweave.decision_binding`; decision, intent and policy graph nodes; `QueryAPI.decision`, `basis`, `policy_text` with complete/partial/unavailable status; `.dot` decision views; synthetic decisions for scale planes.
 - Decision protocols: `protocol check` and `protocol lock` accept `decisions:`, `policies:` and `manifests:` and hash the referenced files.

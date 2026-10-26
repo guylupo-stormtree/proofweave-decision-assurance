@@ -258,7 +258,8 @@ def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unk
                 manifests.append(m)
                 progress(f"  {'GREEN' if m['green'] else ('adverse' if m['complete'] else 'failed')}"
                          f" · findings {m['findings']} · {m['wall_clock_s']} s")
-        for s in range(1, (0 if cfg.decisions else cfg.semgrep_runs) + 1):
+        n_sg = sum("semgrep" in d["basis"] for d in plan_decisions)   # Semgrep runs already used as decision basis
+        for s in range(n_sg + 1, n_sg + cfg.semgrep_runs + 1):   # standalone scans: in no decision's basis
             progress(f"Semgrep {s}/{cfg.semgrep_runs}")
             manifests.append(_run_semgrep(cfg, out / "semgrep" / f"run{s:03d}", f"semgrep/run{s:03d}"))
     finally:
@@ -275,7 +276,7 @@ def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unk
     (out / "sealed-manifest.json").write_text(json.dumps(sealed, indent=2, sort_keys=True) + "\n")
     if cfg.decisions:
         want_ra = sum("repoaudit" in d["basis"] for d in plan_decisions)
-        want_sg = sum("semgrep" in d["basis"] for d in plan_decisions)
+        want_sg = sum("semgrep" in d["basis"] for d in plan_decisions) + cfg.semgrep_runs
     else:
         want_ra, want_sg = cfg.runs_per_model * len(ra_models), cfg.semgrep_runs
     checks = {
