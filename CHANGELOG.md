@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## pw-v0.2.2
+- The development importer keeps Semgrep runs beyond those a decision schedule needs as standalone scans (in no decision's basis), matching Stage 1. Consolidates a change previously made only in a downstream checkout.
+
 ## pw-v0.2.1
 - `pwexp model-check --model provider:model [--key-stdin]`: one minimal call per entry to confirm the key and model work; the key appears in no output.
 - `pwexp run-stage 1 --key-stdin`: keys read from standard input, one per `--model`, for a calling program that already holds them in memory (still never stored).

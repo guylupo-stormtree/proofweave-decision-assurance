@@ -76,9 +76,11 @@ def _write_decisions(out: Path, mans: list[dict], proto: dict, base: Path) -> li
     sg = [m["run"] for m in mans if m["control"] == "semgrep"]
     need_ra = sum("repoaudit" in d["basis"] for d in plan)
     need_sg = sum("semgrep" in d["basis"] for d in plan)
-    if (need_ra, need_sg) != (len(ra), len(sg)):
-        raise DevFixtureError(f"the decision schedule needs {need_ra} RepoAudit and {need_sg} Semgrep runs; "
-                              f"{len(ra)} and {len(sg)} were imported")
+    standalone = int((proto.get("acquisition") or {}).get("semgrep_runs") or 0)   # in no decision's basis
+    if (need_ra, need_sg + standalone) != (len(ra), len(sg)):
+        raise DevFixtureError(f"the decision schedule needs {need_ra} RepoAudit and {need_sg} Semgrep runs "
+                              f"(+{standalone} standalone); {len(ra)} and {len(sg)} were imported")
+    sg = sg[:need_sg]                                  # decisions take the first; the rest stay standalone
     green = {m["run"]: bool(m["green"]) for m in mans}
     it = {"repoaudit": iter(ra), "semgrep": iter(sg)}
     i = proto["decisions"]["intent"]

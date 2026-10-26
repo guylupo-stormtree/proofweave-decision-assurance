@@ -156,6 +156,26 @@ def test_stage1_writes_context_before_runs_and_decision_after(root, monkeypatch)
     assert ctx["intent"]["scope_ref"]["sha256"] == s1.sha256_file(DPROTO.parent / "manifests" / "M_h.json")
 
 
+def _main_only(proto):
+    """The fixture protocol narrowed to five RepoAudit decisions plus one standalone Semgrep scan."""
+    groups = [{"group": "G-main", "control": "repoaudit", "basis": ["repoaudit"], "policy": "P1@1", "rule": "DR-11",
+               "count": 5}]
+    return {**proto, "decisions": {**proto["decisions"], "groups": groups},
+            "acquisition": {**proto["acquisition"], "semgrep_runs": 1}}
+
+
+def test_standalone_semgrep_is_retained_but_in_no_decision_basis(root):
+    proto = _main_only(protocol.load())
+    c = devfixture.import_cycle(FIX, RUNS, semgrep=["semgrep/run001"], decisions=proto, base=protocol.base_dir())
+    d, store, q = _corpus(c)
+    assert q.decisions() == [f"G-main-0{i}" for i in range(1, 6)]
+    assert all(not any(r.startswith("semgrep/") for r in q.decision(x)["binding"]["payload"]["basis_runs"])
+               for x in q.decisions())
+    assert any(r["run"] == "semgrep/run001" for r in Ledger(d).records())       # ingested, standalone
+    with pytest.raises(devfixture.DevFixtureError, match="standalone"):
+        devfixture.import_cycle(FIX, RUNS, semgrep=[], decisions=proto, base=protocol.base_dir())
+
+
 # ---------------------------------------------------------------- ingest, queries, failures
 def test_ingest_binds_every_decision_completely(root):
     c = _dev_cycle()
