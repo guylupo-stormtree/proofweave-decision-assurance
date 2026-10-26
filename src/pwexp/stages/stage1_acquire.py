@@ -22,6 +22,7 @@ import os
 import random
 import shutil
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -117,12 +118,41 @@ def _leaf_dirs(base: Path) -> set[Path]:
     return {p for p in base.rglob("*") if p.is_dir() and not any(c.is_dir() for c in p.iterdir())}
 
 
+# RepoAudit skips every function whose absolute file path contains one of these words (its test and example
+# filter), so a checkout under e.g. ~/dev/my-testing/ would be skipped entirely and every run would be an empty GREEN.
+SKIPPED_PATH_WORDS = ("test", "example")
+
+
+def _subject_copy(target: Path) -> Path:
+    """A byte-identical copy of the target at a neutral path that RepoAudit's filter does not match. Bind makes
+    every path relative to the recorded --project-path, so the records are the same as for the original."""
+    base = Path(tempfile.mkdtemp(prefix="pwexp-subject-"))
+    if any(w in str(base).lower() for w in SKIPPED_PATH_WORDS):
+        shutil.rmtree(base, ignore_errors=True)
+        raise RuntimeError(f"temporary directory {base} contains one of {SKIPPED_PATH_WORDS}, which RepoAudit "
+                           "skips; set TMPDIR to a neutral directory")
+    copy = base / target.name
+    shutil.copytree(target, copy, symlinks=True)
+    if manifest_hash(tree_manifest(copy)) != manifest_hash(tree_manifest(target)):
+        shutil.rmtree(base, ignore_errors=True)
+        raise RuntimeError("the subject copy of the target differs from the target")
+    return copy
+
+
 def _run_repoaudit(cfg: Stage1Config, alias: str, out: Path, gw: ModelGateway, tag: str) -> dict:
+    subject = _subject_copy(cfg.target.resolve())
+    try:
+        return _run_repoaudit_on(cfg, alias, out, gw, tag, subject)
+    finally:
+        shutil.rmtree(subject.parent, ignore_errors=True)
+
+
+def _run_repoaudit_on(cfg: Stage1Config, alias: str, out: Path, gw: ModelGateway, tag: str, subject: Path) -> dict:
     ra = setup_env.repoaudit_dir()
     log_root, res_root = ra / "log" / "dfbscan", ra / "result" / "dfbscan"
     before_log, before_res = _leaf_dirs(log_root), _leaf_dirs(res_root)
     cmd = [str(setup_env.repoaudit_python()), "repoaudit.py", "--scan-type", "dfbscan",
-           "--language", cfg.language, "--model-name", alias, "--project-path", str(cfg.target.resolve()),
+           "--language", cfg.language, "--model-name", alias, "--project-path", str(subject),
            "--bug-type", cfg.bug_type, "--is-reachable", "--temperature", str(cfg.temperature),
            "--call-depth", str(cfg.call_depth), "--max-neural-workers", str(cfg.workers)]
     out.mkdir(parents=True, exist_ok=False)

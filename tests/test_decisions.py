@@ -305,3 +305,17 @@ def test_standalone_semgrep_scan_in_a_decision_schedule(root, monkeypatch):
     assert calls[-1] == "semgrep/run001" and sum(t.startswith("gpt-pw") for t in calls) == 2
     plan = json.loads((stage1_dir(c) / "plan.json").read_text())
     assert not any("semgrep/run001" in d.get("basis_runs", []) for d in plan["decisions"])
+
+
+def test_repoaudit_gets_a_neutral_identical_copy(tmp_path):
+    """RepoAudit skips any file whose absolute path contains 'test' or 'example'; the subject copy avoids both."""
+    from pwexp.hashing import manifest_hash, tree_manifest
+    target = tmp_path / "my-testing-checkout" / "target"
+    (target / "pkg").mkdir(parents=True)
+    (target / "pkg" / "m.py").write_text("def f():\n    return None\n")
+    copy = s1._subject_copy(target)
+    try:
+        assert copy.name == "target" and not any(w in str(copy).lower() for w in s1.SKIPPED_PATH_WORDS)
+        assert manifest_hash(tree_manifest(copy)) == manifest_hash(tree_manifest(target))
+    finally:
+        shutil.rmtree(copy.parent)
