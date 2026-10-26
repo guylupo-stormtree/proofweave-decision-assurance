@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## pw-v0.2.3
+- Stage 1 runs RepoAudit on a fresh, byte-identical copy of the target under a neutral temporary directory. RepoAudit skips every function whose absolute file path contains `test` or `example`, so a target checked out under such a directory was skipped entirely (no sources, no model calls, an empty GREEN). Records are unchanged: Bind makes paths relative to the recorded `--project-path`.
+
 ## pw-v0.2.2
 - The development importer keeps Semgrep runs beyond those a decision schedule needs as standalone scans (in no decision's basis), matching Stage 1. Consolidates a change previously made only in a downstream checkout.
 
