@@ -12,6 +12,11 @@ list of recorded decisions instead of N runs per model. For each decision it wri
 run, or one RepoAudit and one Semgrep run), and writes the decision AFTER the last one
 (decisions/<id>/, see proofweave.decision_bundle). Every scheduled decision and run is kept.
 
+Pause and resume: Ctrl-C, a closed terminal (SIGHUP) or SIGTERM pauses the stage; `run(..., resume=True)`
+continues the same attempt. Recorded decisions and finished runs are kept; the decision or run that was cut off
+is moved to interrupted/ (kept, listed in the outcome) and run again. A stage stopped without pausing (a kill or
+reboot) resumes the same way.
+
 RepoAudit is never modified: it is invoked as a subprocess with the gateway URL and a
 per-run gateway token in its environment, and no provider key ever enters its environment.
 """
@@ -21,6 +26,7 @@ import json
 import os
 import random
 import shutil
+import signal
 import subprocess
 import tempfile
 import time
@@ -39,6 +45,14 @@ from ..proofweave import decision_bundle
 Progress = Callable[[str], None]
 _SECRET_ENV = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY2", "GEMINI_API_KEY",
                "GOOGLE_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "OPENAI_BASE_URL")
+
+
+class StagePaused(Exception):
+    """Stage 1 was interrupted and paused; it can be resumed."""
+
+
+def _stop(signum, frame):
+    raise StagePaused(signal.Signals(signum).name)
 
 
 @dataclass
@@ -231,6 +245,34 @@ def _run_semgrep(cfg: Stage1Config, out: Path, tag: str) -> dict:
     return man
 
 
+def _set_aside(out: Path, p: Path, why: str) -> None:
+    """Move a run or decision that was cut off to interrupted/ (kept, never deleted) and log it."""
+    dst = out / "interrupted" / p.relative_to(out)
+    k = 1
+    while dst.exists():
+        k += 1
+        dst = dst.with_name(f"{p.name}.{k}")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(p), str(dst))
+    with (out / "interrupted" / "interrupted.jsonl").open("a") as f:
+        f.write(json.dumps({"moved": p.relative_to(out).as_posix(), "to": dst.relative_to(out).as_posix(),
+                            "why": why, "at": _now()}, sort_keys=True) + "\n")
+
+
+def _kept(out: Path, run_dir: Path) -> dict | None:
+    """The manifest of a run finished before a pause, or None (a cut-off run is set aside first)."""
+    if (run_dir / "manifest.json").exists():
+        return json.loads((run_dir / "manifest.json").read_text())
+    if run_dir.exists():
+        _set_aside(out, run_dir, "run cut off by a pause or stop")
+    return None
+
+
+def _interrupted(out: Path) -> list[dict]:
+    f = out / "interrupted" / "interrupted.jsonl"
+    return [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
+
+
 def _run_dir(m: dict) -> str:
     return ("repoaudit/" + m["run"]) if m["control"] == "repoaudit" else m["run"]
 
@@ -247,8 +289,9 @@ def _secret_scan(root: Path, models: RunModels) -> list[str]:
 
 
 def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unknown",
-        progress: Progress = print) -> bool:
-    """Run Stage 1 on `cycle`. Returns True when every check passes (the next stage unlocks)."""
+        progress: Progress = print, resume: bool = False) -> bool:
+    """Run Stage 1 on `cycle` (or resume it). Returns True when every check passes (the next stage unlocks).
+    Raises StagePaused after pausing the stage on Ctrl-C, SIGHUP or SIGTERM."""
     ra_models = models.entries("repoaudit")
     if not ra_models:
         raise ValueError("Stage 1 needs at least one RepoAudit model entry")
@@ -256,15 +299,40 @@ def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unk
         from .. import protocol
         if not models.matches_protocol(protocol.load()["acquisition"]["models"]):
             raise ValueError("campaign cycle: the model list must equal the locked protocol (DR-20)")
-    attempt = cycle.start(1)
-    out = cycle.stage_dir(1) / f"attempt{attempt}"
-    out.mkdir(parents=True, exist_ok=False)
     before = setup_env.subject_state()
     target_manifest = manifest_hash(tree_manifest(cfg.target))
     plan = {"target": str(cfg.target), "target_manifest_sha256": target_manifest, "seed": cfg.seed,
             "decision_schedule": bool(cfg.decisions),
             "runs_per_model": cfg.runs_per_model, "semgrep_runs": cfg.semgrep_runs, "models": models.public(),
             "subject_before": before, "started": _now()}
+    if resume:
+        if cycle.data["mode"] == "campaign":
+            from .. import protocol
+            ok, lock = protocol.check_lock()
+            if not ok or lock != cycle.data.get("protocol_lock_sha256"):
+                raise ValueError(f"cannot resume: the protocol lock is not the one this cycle was created under ({lock})")
+        attempt = cycle.resume(1)
+        out = cycle.stage_dir(1) / f"attempt{attempt}"
+        if (out / "plan.json").exists():
+            old = json.loads((out / "plan.json").read_text())
+            same = ("target_manifest_sha256", "seed", "decision_schedule", "runs_per_model", "semgrep_runs", "models")
+            diff = [k for k in same if old.get(k) != plan[k]]
+            if diff or old["subject_before"].get("head") != before.get("head"):
+                cycle.pause(1, "resume refused: " + ", ".join(diff or ["RepoAudit commit"]) + " changed")
+                raise ValueError(f"cannot resume: {', '.join(diff or ['RepoAudit commit'])} changed since the stage started")
+            plan.update(subject_before=old["subject_before"], started=old["started"])
+        else:
+            plan["started"] = cycle.data["stages"]["1"].get("started_at", plan["started"])
+        plan["resumed"] = [r["at"] for r in cycle.data["stages"]["1"]["resumed"]]
+        plan["subject_at_resume"] = before
+        progress(f"resuming Stage 1 attempt {attempt}: recorded work is kept, the cut-off work runs again")
+    else:
+        attempt = cycle.start(1)
+        out = cycle.stage_dir(1) / f"attempt{attempt}"
+        out.mkdir(parents=True, exist_ok=False)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "plan.json").write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n")
+    old_handlers = {sig: signal.signal(sig, _stop) for sig in (signal.SIGHUP, signal.SIGTERM)}
     gw = ModelGateway(models)
     gw.start()
     manifests: list[dict] = []
@@ -283,6 +351,11 @@ def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unk
             for alias in order:
                 k += 1
                 tag = f"{alias}/run{rep:03d}"
+                m = _kept(out, out / "repoaudit" / alias / f"run{rep:03d}")
+                if m:
+                    manifests.append(m)
+                    progress(f"RepoAudit {k}/{total}  run {rep}: kept from before the pause")
+                    continue
                 progress(f"RepoAudit {k}/{total}  {gw.models.by_alias(alias).model}  run {rep}")
                 m = _run_repoaudit(cfg, alias, out / "repoaudit" / alias / f"run{rep:03d}", gw, tag)
                 manifests.append(m)
@@ -290,10 +363,20 @@ def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unk
                          f" · findings {m['findings']} · {m['wall_clock_s']} s")
         n_sg = sum("semgrep" in d["basis"] for d in plan_decisions)   # Semgrep runs already used as decision basis
         for s in range(n_sg + 1, n_sg + cfg.semgrep_runs + 1):   # standalone scans: in no decision's basis
+            m = _kept(out, out / "semgrep" / f"run{s:03d}")
+            if m:
+                manifests.append(m)
+                continue
             progress(f"Semgrep {s}/{cfg.semgrep_runs}")
             manifests.append(_run_semgrep(cfg, out / "semgrep" / f"run{s:03d}", f"semgrep/run{s:03d}"))
+    except (KeyboardInterrupt, StagePaused) as e:
+        why = "Ctrl-C" if isinstance(e, KeyboardInterrupt) else str(e)
+        cycle.pause(1, why)
+        raise StagePaused(why) from None
     finally:
         gw.stop()
+        for sig, h in old_handlers.items():
+            signal.signal(sig, h)
     after = setup_env.subject_state()
     plan.update(subject_after=after, finished=_now(), decisions=plan_decisions)
     (out / "plan.json").write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n")
@@ -336,6 +419,7 @@ def run(cycle: Cycle, cfg: Stage1Config, models: RunModels, operator: str = "unk
         "semgrep_runs": len(sg), "semgrep_green": sum(m["green"] for m in sg),
         "sealed_manifest_sha256": sealed["files_sha256"], "attempt_dir": out.name,
         "secret_hits": secret_hits,
+        "interrupted": _interrupted(out),
     }
     if cfg.decisions:
         dec = {b.name: json.loads((b / "decision.json").read_text()) for b in decision_bundle.bundles(out)
@@ -378,9 +462,29 @@ def _run_decisions(cfg: Stage1Config, plan: list[dict], alias: str, out: Path, g
         if "semgrep" in d["basis"]:
             n_sg += 1
             tags.append(f"semgrep/run{n_sg:03d}")
+        bundle = out / "decisions" / d["decision_id"]
+        run_dirs = {t: (out / "semgrep" / t.split("/")[1]) if t.startswith("semgrep/")
+                    else (out / "repoaudit" / alias / t.split("/")[1]) for t in tags}
+        if bundle.exists():
+            done = {t: json.loads((p / "manifest.json").read_text()) for t, p in run_dirs.items()
+                    if (p / "manifest.json").exists()}
+            if (bundle / "decision.json").exists() and len(done) == len(tags):
+                verdict = decision_bundle.load(bundle)["decision"]["verdict"]
+                manifests += done.values()
+                progress(f"Decision {k}/{len(plan)}  {d['decision_id']}: kept from before the pause ({verdict})")
+                continue
+            if len(done) == len(tags) and (bundle / "decision_context.json").exists():
+                manifests += done.values()   # every basis run finished; only the decision itself was cut off
+                dec = decision_bundle.write_decision(bundle, {t: bool(m["green"]) for t, m in done.items()},
+                                                     harness_version=f"pwexp stage1 {_harness_commit()}")
+                progress(f"Decision {k}/{len(plan)}  {d['decision_id']}: {dec['verdict']} (completed after the pause)")
+                continue
+            _set_aside(out, bundle, "decision cut off by a pause or stop")
+        for p in run_dirs.values():
+            if p.exists():
+                _set_aside(out, p, "run cut off by a pause or stop")
         pid, pver = d["policy"].split("@", 1)
         pbytes = (cfg.base / cfg.policies[d["policy"]]["file"]).read_bytes()
-        bundle = out / "decisions" / d["decision_id"]
         decision_bundle.write_context(bundle, d["decision_id"], d["control"], _control_version(cfg, before, d["basis"]),
                                       _intent(cfg, d["decision_id"]), pid, pver, pbytes, tags, d["rule"])
         progress(f"Decision {k}/{len(plan)}  {d['decision_id']} · policy {d['policy']} · basis {', '.join(tags)}")

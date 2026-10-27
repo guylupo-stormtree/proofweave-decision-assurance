@@ -10,10 +10,14 @@ the published Stage 1 evidence bed read-only.
 Gating: a stage can start only if every earlier stage is complete. Completing a stage
 requires every check to pass; a failed check marks the stage failed and stops the cycle
 until it is re-run under a new attempt number. Failed attempts are retained.
+
+Pause and resume (Stage 1): an interrupted Stage 1 (Ctrl-C, a closed terminal, a reboot) can be resumed
+under the same attempt; finished work is kept and only the unfinished work runs again.
 """
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -83,9 +87,43 @@ class Cycle:
         for m in range(1, n):
             if self.stage_state(m) != "complete":
                 return False, f"Stage {m} is not complete"
-        if self.stage_state(n) in ("complete", "running"):
-            return False, f"Stage {n} is {self.stage_state(n)}"
+        if self.stage_state(n) in ("complete", "running", "paused"):
+            return False, f"Stage {n} is {self.stage_state(n)}" + (" (resume it)" if self.stage_state(n) == "paused" else "")
         return True, ""
+
+    def can_resume(self, n: int) -> tuple[bool, str]:
+        """A paused stage, or one left 'running' by a process that no longer exists, can be resumed."""
+        if n != 1:
+            return False, "only Stage 1 can be resumed"
+        state = self.stage_state(n)
+        if state not in ("paused", "running"):
+            return False, f"Stage {n} is {state}, not paused"
+        if state == "running" and _running_elsewhere(self.id):
+            return False, f"Stage {n} is still running in another process"
+        return True, ""
+
+    def resume(self, n: int) -> int:
+        ok, why = self.can_resume(n)
+        if not ok:
+            raise CycleError(why)
+        st = self.data["stages"][str(n)]
+        was = st["status"]
+        st.setdefault("resumed", []).append({"at": _now(), "from": was if was == "paused" else "stopped without pausing"})
+        st["status"], self.data["status"] = "running", "in progress"
+        self.log.append({"event": "stage_resumed", "stage": n, "attempt": st["attempt"], "from": was,
+                         "code": code_commit(), "time": st["resumed"][-1]["at"]})
+        self.save()
+        return st["attempt"]
+
+    def pause(self, n: int, reason: str) -> None:
+        st = self.data["stages"][str(n)]
+        if st["status"] != "running":
+            raise CycleError(f"Stage {n} is not running")
+        st["status"], self.data["status"] = "paused", "paused"
+        st.setdefault("pauses", []).append({"at": _now(), "reason": reason})
+        self.log.append({"event": "stage_paused", "stage": n, "attempt": st["attempt"], "reason": reason,
+                         "time": st["pauses"][-1]["at"]})
+        self.save()
 
     def start(self, n: int) -> int:
         ok, why = self.can_start(n)
@@ -122,6 +160,23 @@ class Cycle:
             self.data["status"] = "failed"
         self.save()
         return passed
+
+
+def _running_elsewhere(cycle_id: str) -> bool:
+    """True if another process on this host is running a stage of this cycle (`pwexp run-stage ... --cycle ID`)."""
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return False
+    for d in proc.iterdir():
+        if not d.name.isdigit() or int(d.name) == os.getpid():
+            continue
+        try:
+            argv = (d / "cmdline").read_bytes().split(b"\0")
+        except OSError:
+            continue
+        if b"run-stage" in argv and cycle_id.encode() in argv:
+            return True
+    return False
 
 
 def _next_id(mode: str) -> str:

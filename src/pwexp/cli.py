@@ -9,6 +9,7 @@
   pwexp paper-tex --out DIR  write the paper's generated LaTeX (from the published cycle, else pending)
   pwexp setup                install RepoAudit's environment and the pinned Semgrep
   pwexp run-stage 1 --cycle ID --model openai:gpt-4.1   Stage 1 (keys typed at a masked prompt)
+  pwexp run-stage 1 --cycle ID --model ... --resume     resume a paused or stopped Stage 1 (exit 3 = paused)
   pwexp verify               verify the published master set           (P4)
   pwexp replay --published   re-run Stages 2-4 on the published set     (P2-P3)
 
@@ -27,7 +28,10 @@ OK, FAIL = "✓", "✗"
 
 
 def _p(msg: str = "") -> None:
-    print(msg, flush=True)
+    try:
+        print(msg, flush=True)
+    except OSError:   # the terminal or the calling program is gone (a paused run still records its state)
+        pass
 
 
 def cmd_protocol(a) -> int:
@@ -84,7 +88,7 @@ def cmd_cycle(a) -> int:
     _p(f"{c.id} · {c.data['mode']} · {c.data['status']} · lock {str(c.data.get('protocol_lock_sha256'))[:12]}")
     for n, name in cycles.STAGES.items():
         st = c.data["stages"][str(n)]
-        mark = {"complete": OK, "failed": FAIL, "running": "▶"}.get(st["status"], " ")
+        mark = {"complete": OK, "failed": FAIL, "running": "▶", "paused": "⏸"}.get(st["status"], " ")
         _p(f"  {mark} Stage {n}  {name:36} {st['status']:9} attempt {st['attempt']}")
     problems = c.log.verify()
     _p(f"  stage log: {'intact' if not problems else 'BROKEN: ' + '; '.join(problems)}")
@@ -176,7 +180,7 @@ def _run_stage1(c, a, prog) -> bool:
     cfg = stage1_acquire.Stage1Config.from_protocol(proto, protocol.base_dir(), seed=a.seed)
     models = _stage1_models(a.model, a.base_url, a.key_stdin)
     try:
-        return stage1_acquire.run(c, cfg, models, operator=a.operator, progress=prog)
+        return stage1_acquire.run(c, cfg, models, operator=a.operator, progress=prog, resume=a.resume)
     finally:
         models.clear()
 
@@ -198,12 +202,12 @@ def cmd_setup(a) -> int:
 
 def cmd_run_stage(a) -> int:
     from pathlib import Path
-    from .stages import stage2_timing, stage3_scale, stage4_decisions
+    from .stages import stage1_acquire, stage2_timing, stage3_scale, stage4_decisions
     try:
         c = cycles.load(a.cycle)
-        ok, why = c.can_start(a.stage)
+        ok, why = c.can_resume(a.stage) if a.resume else c.can_start(a.stage)
         if not ok:
-            _p(f"{FAIL} cannot start Stage {a.stage}: {why}")
+            _p(f"{FAIL} cannot {'resume' if a.resume else 'start'} Stage {a.stage}: {why}")
             return 1
         prog = lambda m: _p(f"  {m}")  # noqa: E731
         _p(f"Stage {a.stage}  {cycles.STAGES[a.stage]} …")
@@ -216,6 +220,9 @@ def cmd_run_stage(a) -> int:
         else:
             passed = stage4_decisions.run(c, required_path=Path(a.required) if a.required else None, tau=a.tau,
                                           operator=a.operator, progress=prog)
+    except stage1_acquire.StagePaused as e:
+        _p(f"⏸ Stage 1 paused ({e}); recorded work is kept. Resume: the same command with --resume")
+        return 3
     except (cycles.CycleError, ValueError, protocol.ProtocolError) as e:
         _p(f"{FAIL} {e}")
         return 1
@@ -352,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
     rs.add_argument("--base-url", default="", help="Stage 1: endpoint for the dev-only local provider")
     rs.add_argument("--seed", type=int, help="Stage 1: run-order seed (default: protocol or random, recorded)")
     rs.add_argument("--key-stdin", action="store_true", help="Stage 1: read the keys from standard input, one per --model")
+    rs.add_argument("--resume", action="store_true", help="Stage 1: resume a paused or stopped attempt (finished work is kept)")
     mc = sub.add_parser("model-check", help="check that each provider:model works with its key (one minimal call)")
     mc.add_argument("--model", action="append", required=True)
     mc.add_argument("--base-url", default="")

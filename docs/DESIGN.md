@@ -83,5 +83,7 @@ Downstream experiments can record each control decision as a bound object: the i
 | Stage 2 | After all run bundles, each decision bundle is ingested: intent, policy and decision records, then the binding record. The graph gains `decision`, `intent` and `policy` nodes with `for`, `under`, `by` and `verdict` edges, and a `.dot` decision view per decision. |
 | Query | `decision(id)`, `basis(id, kinds)` and `policy_text(record)` resolve the binding through the ledger and recompute the basis root. |
 
+Pause and resume: Ctrl-C, a closed terminal or SIGTERM pauses Stage 1 (state `paused`, a `stage_paused` record in the stage log; exit code 3). `pwexp run-stage 1 --cycle ID --model ... --resume` continues the same attempt under the same lock, also after a kill or reboot left the stage `running` with no process. Recorded decisions and finished runs are kept; the decision or run that was cut off is moved to `stage1/attempt<k>/interrupted/`, listed in `interrupted.jsonl` and the stage outcome, and run again. A decision whose basis runs all finished is completed from them. Resume is refused if the target, seed, schedule, models or RepoAudit commit changed.
+
 Commands: `pwexp run-stage 1|2 --protocol FILE --records-root DIR` (defaults unchanged); `pwexp import-dev --protocol FILE` writes development decision bundles over the fixture runs (contexts written after the runs, marked as such; never a result).
 

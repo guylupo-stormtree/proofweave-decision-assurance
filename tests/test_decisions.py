@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import signal
 from pathlib import Path
 
 import pytest
@@ -319,3 +321,107 @@ def test_repoaudit_gets_a_neutral_identical_copy(tmp_path):
         assert manifest_hash(tree_manifest(copy)) == manifest_hash(tree_manifest(target))
     finally:
         shutil.rmtree(copy.parent)
+
+
+def _pausable_stage1(monkeypatch, count=4, stop_at=None, hangup=False):
+    """A decision schedule of `count` RepoAudit decisions plus one standalone Semgrep scan with fake controls;
+    the RepoAudit call number `stop_at` is cut off by Ctrl-C after its run folder was created."""
+    from pwexp.models import RunModels
+    calls = []
+
+    def fake_ra(cfg, alias, out, gw, tag):
+        out.mkdir(parents=True)
+        calls.append(tag)
+        if len(calls) == stop_at:
+            if hangup:
+                os.kill(os.getpid(), signal.SIGHUP)   # the terminal closed
+            raise KeyboardInterrupt
+        m = {"run": tag, "control": "repoaudit", "alias": alias, "start_us": db.now_us(), "wall_clock_s": 0,
+             "complete": True, "findings": 0, "green": True, "input_tokens": 0, "output_tokens": 0, "output_sha256": {}}
+        (out / "manifest.json").write_text(json.dumps(m))
+        return m
+
+    def fake_sg(cfg, out, tag):
+        out.mkdir(parents=True)
+        calls.append(tag)
+        m = {"run": tag, "control": "semgrep", "start_us": db.now_us(), "wall_clock_s": 0, "green": True,
+             "output_sha256": {}}
+        (out / "manifest.json").write_text(json.dumps(m))
+        return m
+
+    monkeypatch.setattr(s1, "_run_repoaudit", fake_ra)
+    monkeypatch.setattr(s1, "_run_semgrep", fake_sg)
+    monkeypatch.setattr(s1, "ModelGateway", _FakeGateway)
+    monkeypatch.setattr(s1.setup_env, "subject_state", lambda: {"head": "160f5bc", "pinned": True, "tracked_files_modified": False})
+    proto = protocol.load()
+    proto["decisions"]["groups"] = [{"group": "G-main", "control": "repoaudit", "basis": ["repoaudit"], "policy": "P1@1",
+                                     "rule": "DR-11", "count": count}]
+    proto["acquisition"]["semgrep_runs"] = 1
+    models = RunModels()
+    models.add("repoaudit", "openai", "development-placeholder", "sk-test-not-a-key")
+    return s1.Stage1Config.from_protocol(proto, protocol.base_dir()), models, calls
+
+
+def test_paused_stage1_resumes_keeping_recorded_decisions(root, monkeypatch):
+    from pwexp import cycles
+    cfg, models, calls = _pausable_stage1(monkeypatch, stop_at=3)
+    c = cycles.create("pilot", None)
+    with pytest.raises(s1.StagePaused, match="Ctrl-C"):
+        s1.run(c, cfg, models, progress=QUIET)
+    c = cycles.load(c.id)
+    assert c.stage_state(1) == "paused" and not c.can_start(1)[0] and c.can_resume(1)[0]
+    assert len(c.data["stages"]["1"]["pauses"]) == 1
+    calls.clear()
+    assert s1.run(c, cfg, models, progress=QUIET, resume=True)
+    assert len([t for t in calls if t.startswith("gpt-pw")]) == 2           # decisions 1-2 kept; 3 rerun, 4 new
+    st = c.data["stages"]["1"]
+    assert all(st["checks"].values()) and st["outcome"]["decisions"]["count"] == 4
+    assert sorted(i["moved"].split("/")[0] for i in st["outcome"]["interrupted"]) == ["decisions", "repoaudit"]
+    out = stage1_dir(c)
+    assert (out / "interrupted" / "decisions").is_dir() and (out / "interrupted" / "repoaudit").is_dir()
+    events = [json.loads(x)["event"] for x in (c.path / "stage-log.jsonl").read_text().splitlines()]
+    assert events == ["stage_paused", "stage_resumed", "stage_complete"]
+
+
+def test_stopped_stage1_resumes_and_completes_a_decision_whose_runs_finished(root, monkeypatch):
+    """A kill or reboot leaves the stage 'running' with no process; a decision whose basis runs all finished is
+    completed from them rather than paid for again."""
+    from pwexp import cycles
+    cfg, models, calls = _pausable_stage1(monkeypatch, stop_at=3)
+    c = cycles.create("pilot", None)
+    with pytest.raises(s1.StagePaused):
+        s1.run(c, cfg, models, progress=QUIET)
+    c = cycles.load(c.id)
+    c.data["stages"]["1"]["status"] = "running"        # as if killed: no pause was recorded
+    c.save()
+    out = c.path / "stage1" / "attempt1"
+    done = [b for b in (out / "decisions").iterdir() if (b / "decision.json").exists()]
+    for f in ("decision.json", "manifest.json"):
+        (done[0] / f).unlink()                            # its run finished, the decision was not yet written
+    calls.clear()
+    assert s1.run(c, cfg, models, progress=QUIET, resume=True)
+    assert len([t for t in calls if t.startswith("gpt-pw")]) == 2
+    assert c.data["stages"]["1"]["resumed"][0]["from"] == "stopped without pausing"
+    assert all(c.data["stages"]["1"]["checks"].values())
+
+
+def test_resume_refused_when_the_plan_changed(root, monkeypatch):
+    from pwexp import cycles
+    cfg, models, _ = _pausable_stage1(monkeypatch, stop_at=2)
+    c = cycles.create("pilot", None)
+    with pytest.raises(s1.StagePaused):
+        s1.run(c, cfg, models, progress=QUIET)
+    cfg.seed += 1
+    with pytest.raises(ValueError, match="seed changed"):
+        s1.run(cycles.load(c.id), cfg, models, progress=QUIET, resume=True)
+    assert cycles.load(c.id).stage_state(1) == "paused"
+
+
+def test_closed_terminal_pauses_stage1(root, monkeypatch):
+    from pwexp import cycles
+    cfg, models, _ = _pausable_stage1(monkeypatch, stop_at=2, hangup=True)
+    c = cycles.create("pilot", None)
+    with pytest.raises(s1.StagePaused, match="SIGHUP"):
+        s1.run(c, cfg, models, progress=QUIET)
+    assert cycles.load(c.id).data["stages"]["1"]["pauses"][0]["reason"] == "SIGHUP"
+    assert signal.getsignal(signal.SIGHUP) is not s1._stop

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## pw-v0.2.4
+- Stage 1 pause and resume. Ctrl-C, a closed terminal (SIGHUP) or SIGTERM pauses Stage 1 (exit code 3, `stage_paused` in the stage log); `run-stage 1 --resume` continues the same attempt under the same protocol lock, also after a kill or reboot. Recorded decisions and finished runs are kept and not run again; the decision or run that was cut off is kept under `interrupted/` (listed in the outcome) and run again. Resume is refused if the target, seed, schedule, models or RepoAudit commit changed, or, for a campaign, if the lock is not the one the cycle was created under.
+- `pwexp` output survives a closed terminal (a pause is still recorded).
+
 ## pw-v0.2.3
 - Stage 1 runs RepoAudit on a fresh, byte-identical copy of the target under a neutral temporary directory. RepoAudit skips every function whose absolute file path contains `test` or `example`, so a target checked out under such a directory was skipped entirely (no sources, no model calls, an empty GREEN). Records are unchanged: Bind makes paths relative to the recorded `--project-path`.
 
