@@ -12,7 +12,9 @@ requires every check to pass; a failed check marks the stage failed and stops th
 until it is re-run under a new attempt number. Failed attempts are retained.
 
 Pause and resume (Stage 1): an interrupted Stage 1 (Ctrl-C, a closed terminal, a reboot) can be resumed
-under the same attempt; finished work is kept and only the unfinished work runs again.
+under the same attempt; finished work is kept and only the unfinished work runs again. Stages 2-4 are short and
+offline: one left 'running' by a process that no longer exists is recorded as stopped (its folder kept) and runs
+again under a new attempt number.
 """
 from __future__ import annotations
 
@@ -87,6 +89,8 @@ class Cycle:
         for m in range(1, n):
             if self.stage_state(m) != "complete":
                 return False, f"Stage {m} is not complete"
+        if self._stale(n):
+            return True, ""
         if self.stage_state(n) in ("complete", "running", "paused"):
             return False, f"Stage {n} is {self.stage_state(n)}" + (" (resume it)" if self.stage_state(n) == "paused" else "")
         return True, ""
@@ -125,12 +129,22 @@ class Cycle:
                          "time": st["pauses"][-1]["at"]})
         self.save()
 
+    def _stale(self, n: int) -> bool:
+        """Stages 2-4 left 'running' by a process that no longer exists (Stage 1 is resumed instead)."""
+        return n != 1 and self.stage_state(n) == "running" and not _running_elsewhere(self.id)
+
     def start(self, n: int) -> int:
         ok, why = self.can_start(n)
         if not ok:
             raise CycleError(why)
         st = self.data["stages"][str(n)]
-        if st["status"] == "failed":
+        if self._stale(n):
+            self.log.append({"event": "stage_stopped", "stage": n, "stage_name": STAGES[n], "attempt": st["attempt"],
+                             "reason": "left running by a process that no longer exists; rerun as a new attempt",
+                             "code": self.data.get("code"), "time": _now()})
+            st.setdefault("stopped_attempts", []).append(st["attempt"])
+            st["attempt"] += 1
+        elif st["status"] == "failed":
             st["attempt"] += 1
         st["status"], st["started_at"] = "running", _now()
         self.data["status"] = "in progress"

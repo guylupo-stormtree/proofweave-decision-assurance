@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## pw-v0.2.5
+- Stages 2-4 left `running` by a process that no longer exists (a kill or reboot) run again under a new attempt number; the stopped attempt's folder is kept and a `stage_stopped` record is written to the stage log. Previously such a stage could never run again. Stage 1 is resumed instead (pw-v0.2.4). Nothing changes when no stage is stopped.
+
 ## pw-v0.2.4
 - Stage 1 pause and resume. Ctrl-C, a closed terminal (SIGHUP) or SIGTERM pauses Stage 1 (exit code 3, `stage_paused` in the stage log); `run-stage 1 --resume` continues the same attempt under the same protocol lock, also after a kill or reboot. Recorded decisions and finished runs are kept and not run again; the decision or run that was cut off is kept under `interrupted/` (listed in the outcome) and run again. Resume is refused if the target, seed, schedule, models or RepoAudit commit changed, or, for a campaign, if the lock is not the one the cycle was created under.
 - `pwexp` output survives a closed terminal (a pause is still recorded).

@@ -425,3 +425,16 @@ def test_closed_terminal_pauses_stage1(root, monkeypatch):
         s1.run(c, cfg, models, progress=QUIET)
     assert cycles.load(c.id).data["stages"]["1"]["pauses"][0]["reason"] == "SIGHUP"
     assert signal.getsignal(signal.SIGHUP) is not s1._stop
+
+
+def test_stage2_left_running_by_a_dead_process_reruns_as_a_new_attempt(root):
+    c = _dev_cycle()
+    c.data["stages"]["2"]["status"] = "running"          # as if the process was killed mid-stage
+    c.save()
+    (c.path / "stage2" / "attempt1").mkdir(parents=True)
+    assert c.can_start(2)[0]
+    assert s2.run(c, repetitions=1, progress=QUIET)
+    st = c.data["stages"]["2"]
+    assert st["attempt"] == 2 and st["stopped_attempts"] == [1] and (c.path / "stage2" / "attempt1").is_dir()
+    events = [json.loads(x)["event"] for x in (c.path / "stage-log.jsonl").read_text().splitlines()]
+    assert events[-2:] == ["stage_stopped", "stage_complete"]
